@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react"
-import { Loader2, Sparkles } from "lucide-react"
+import { LoaderCircle, Sparkles } from "lucide-react"
 import { useNavigate } from "react-router"
 
 import { Notice } from "@/components/common/Notice"
@@ -85,7 +85,7 @@ export function UploadCard() {
         <Button size="lg" className="w-full" disabled={!canSubmit} onClick={submit}>
           {upload.isPending ? (
             <>
-              <Loader2 className="animate-spin" />
+              <LoaderCircle className="animate-spin" />
               Uploading…
             </>
           ) : (

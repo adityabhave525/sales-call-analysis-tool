@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { AlertTriangle, Info } from "lucide-react"
+import { TriangleAlert, Info } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -13,7 +13,7 @@ interface NoticeProps {
 }
 
 export function Notice({ variant = "warning", title, children, action, className }: NoticeProps) {
-  const Icon = variant === "warning" ? AlertTriangle : Info
+  const Icon = variant === "warning" ? TriangleAlert : Info
   return (
     <div
       role={variant === "warning" ? "alert" : "status"}

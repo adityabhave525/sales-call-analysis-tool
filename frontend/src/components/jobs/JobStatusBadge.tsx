@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Clock, Loader2 } from "lucide-react"
+import { TriangleAlert, CircleCheck, Clock, LoaderCircle } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { STATUS_LABEL } from "@/lib/jobs"
@@ -20,11 +20,11 @@ function StatusIcon({ status }: { status: JobStatus }) {
       return <Clock />
     case "transcribing":
     case "analysing":
-      return <Loader2 className="animate-spin" />
+      return <LoaderCircle className="animate-spin" />
     case "completed":
-      return <CheckCircle2 />
+      return <CircleCheck />
     case "failed":
-      return <AlertTriangle />
+      return <TriangleAlert />
   }
 }
 

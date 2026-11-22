@@ -1,5 +1,5 @@
 import { useCallback } from "react"
-import { UploadCloud } from "lucide-react"
+import { CloudUpload } from "lucide-react"
 import { useDropzone, type FileRejection } from "react-dropzone"
 
 import { cn } from "@/lib/utils"
@@ -47,7 +47,7 @@ export function AudioDropzone({ onSelect, onReject, disabled = false }: AudioDro
     >
       <input {...getInputProps()} aria-label="Upload a call recording" />
       <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-        <UploadCloud className="size-6 text-muted-foreground" />
+        <CloudUpload className="size-6 text-muted-foreground" />
       </div>
       <div className="space-y-1">
         <p className="text-base font-medium">

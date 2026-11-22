@@ -6,11 +6,12 @@ import { BrowserRouter } from "react-router"
 import "./index.css"
 import App from "./App"
 import { queryClient } from "./lib/queryClient"
+import { USE_MOCK } from "./api"
 import { mockControls } from "./mocks"
 
-// Dev only: tweak the mock backend from the browser console, e.g.
+// Dev + mock mode only: tweak the mock backend from the browser console, e.g.
 //   mockControls.latencyMs = 1500   mockControls.failNextAnalysis = true
-if (import.meta.env.DEV) Object.assign(window, { mockControls })
+if (import.meta.env.DEV && USE_MOCK) Object.assign(window, { mockControls })
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

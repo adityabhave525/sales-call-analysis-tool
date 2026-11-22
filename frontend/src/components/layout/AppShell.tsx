@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Toaster } from "@/components/ui/sonner"
 import { SettingsSheet } from "@/components/settings/SettingsSheet"
+import { BackendStatus } from "./BackendStatus"
 import { createDefaultSettings, settingsEqual } from "@/lib/settings"
 import { useSettingsStore } from "@/store/settingsStore"
 import { useUiStore } from "@/store/uiStore"
@@ -39,6 +40,7 @@ export function AppShell() {
       </header>
 
       <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:py-12">
+        <BackendStatus />
         <Outlet />
       </main>
 

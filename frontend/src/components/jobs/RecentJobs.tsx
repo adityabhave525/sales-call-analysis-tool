@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { FileAudio, MoreVertical, RefreshCw } from "lucide-react"
+import { FileAudio, EllipsisVertical, RefreshCw } from "lucide-react"
 import { Link, useNavigate } from "react-router"
 import { toast } from "sonner"
 
@@ -66,7 +66,7 @@ function JobRow({ job, onDelete }: { job: JobOut; onDelete: (job: JobOut) => voi
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className="relative z-10" aria-label={`Actions for ${job.original_filename}`}>
-            <MoreVertical />
+            <EllipsisVertical />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">

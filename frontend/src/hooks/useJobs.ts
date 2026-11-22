@@ -51,6 +51,20 @@ export function useUploadJob() {
   })
 }
 
+/** Re-run only the analysis step (no re-transcription). Used for "Retry analysis"; the settings drawer reuses it. */
+export function useReanalyse() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, settings }: { id: string; settings: AnalysisSettings }) => api.reanalyse(id, settings),
+    onSuccess: (_job, { id }) =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: jobKeys.detail(id) }), // status is "analysing" again => polling resumes
+        qc.invalidateQueries({ queryKey: ["jobs", "result", id] }),
+        qc.invalidateQueries({ queryKey: jobKeys.list }),
+      ]),
+  })
+}
+
 export function useDeleteJob() {
   const qc = useQueryClient()
   return useMutation({
