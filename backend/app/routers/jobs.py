@@ -11,14 +11,18 @@ from sqlalchemy.orm import Session
 
 from ..config import config
 from ..database import get_db
-from ..models import Job
-from ..schemas import AnalysisSettings, JobOut
-from ..services.pipeline import run_pipeline
+from ..models import Job, JobStatus
+from ..schemas import (
+    AnalysisOut, AnalysisSettings, JobOut, JobResultOut, RepAssignment,
+    SpeakerOut, UtteranceOut, VersionOut,
+)
+from ..services.pipeline import run_pipeline, run_reanalysis
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
 ALLOWED_EXTENSIONS = {".m4a", ".mp3"}
 MEDIA_TYPES = {".m4a": "audio/mp4", ".mp3": "audio/mpeg"}
+BUSY = {"queued", "transcribing", "analysing"}
 CHUNK_SIZE = 1024 * 1024
 
 
@@ -120,3 +124,88 @@ def delete_job(job_id: str, db: Session = Depends(get_db)):
     (config.upload_dir / job.stored_filename).unlink(missing_ok=True)
     db.delete(job)
     db.commit()
+
+
+# ---------------- results, re-analysis, speaker roles ----------------
+
+def _get_job_or_404(db: Session, job_id: str) -> Job:
+    job = db.get(Job, job_id)
+    if job is None:
+        raise HTTPException(404, "Job not found.")
+    return job
+
+
+@router.get("/{job_id}/result", response_model=JobResultOut)
+def get_result(job_id: str, version: int | None = None, db: Session = Depends(get_db)):
+    """Everything the results page needs. Defaults to the latest completed analysis."""
+    job = _get_job_or_404(db, job_id)
+    speakers = {s.label: s for s in job.speakers}
+    utterances = []
+    language = None
+    if job.transcript:
+        language = job.transcript.language_code
+        utterances = [
+            UtteranceOut(
+                id=u.id, idx=u.idx, speaker_label=u.speaker_label,
+                role=speakers[u.speaker_label].role if u.speaker_label in speakers else "unknown",
+                start_ms=u.start_ms, end_ms=u.end_ms, text=u.text, confidence=u.confidence)
+            for u in job.transcript.utterances
+        ]
+
+    analyses = list(job.analyses)
+    if version is not None:
+        chosen = next((a for a in analyses if a.version == version), None)
+        if chosen is None:
+            raise HTTPException(404, f"Analysis version {version} not found.")
+    else:
+        completed = [a for a in analyses if a.status == "completed"]
+        chosen = completed[-1] if completed else None
+
+    return JobResultOut(
+        job=JobOut.model_validate(job),
+        language_code=language,
+        utterances=utterances,
+        speakers=[SpeakerOut.model_validate(s) for s in job.speakers],
+        analysis=AnalysisOut.model_validate(chosen) if chosen else None,
+        versions=[VersionOut(version=a.version, status=a.status, tone=a.tone,
+                             llm_model=a.llm_model, created_at=a.created_at) for a in analyses],
+    )
+
+
+@router.post("/{job_id}/reanalyse", response_model=JobOut, status_code=202)
+def reanalyse(job_id: str, settings: AnalysisSettings, background_tasks: BackgroundTasks,
+              db: Session = Depends(get_db)):
+    """Re-run only the Claude step with new settings. Never re-transcribes (no extra transcription cost)."""
+    job = _get_job_or_404(db, job_id)
+    if job.status in BUSY:
+        raise HTTPException(409, "This call is still being processed. Wait for it to finish.")
+    if job.transcript is None:
+        raise HTTPException(409, "There is no transcript to analyse (transcription failed). Please upload the file again.")
+    job.status = JobStatus.ANALYSING.value
+    job.error_message = None
+    job.failed_stage = None
+    db.commit()
+    db.refresh(job)
+    background_tasks.add_task(run_reanalysis, job.id, settings)
+    return job
+
+
+@router.put("/{job_id}/speakers", response_model=list[SpeakerOut])
+def assign_rep(job_id: str, body: RepAssignment, db: Session = Depends(get_db)):
+    """Manual override ('swap roles'). Everyone else becomes the customer.
+    The override is kept across re-analyses. Call /reanalyse afterwards to apply it."""
+    job = _get_job_or_404(db, job_id)
+    if job.status in BUSY:
+        raise HTTPException(409, "This call is still being processed. Wait for it to finish.")
+    if not job.speakers:
+        raise HTTPException(409, "No speakers available yet (transcription has not completed).")
+    labels = {s.label for s in job.speakers}
+    if body.rep_label not in labels:
+        raise HTTPException(422, f"Unknown speaker '{body.rep_label}'. Valid labels: {sorted(labels)}")
+    for s in job.speakers:
+        s.role = "rep" if s.label == body.rep_label else "customer"
+        s.role_source = "user"
+        s.role_confidence = 1.0
+        s.role_reasoning = "Set manually by the user."
+    db.commit()
+    return [SpeakerOut.model_validate(s) for s in job.speakers]

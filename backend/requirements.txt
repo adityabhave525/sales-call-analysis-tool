@@ -5,4 +5,3 @@ pydantic-settings
 python-multipart
 assemblyai
 anthropic
-rapidfuzz

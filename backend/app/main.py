@@ -1,18 +1,32 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from sqlalchemy import update
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import config
-from .database import init_db
+from .database import SessionLocal, init_db
+from .models import Analysis, Job
 from .routers import jobs
 from .schemas import AnalysisSettings
+
+
+def _recover_interrupted_jobs() -> None:
+    """Background tasks die with the server. Don't leave jobs 'processing' forever."""
+    msg = "The server restarted while this call was processing. Please re-run the analysis."
+    with SessionLocal() as db:
+        db.execute(update(Job).where(Job.status.in_(["queued", "transcribing", "analysing"]))
+                   .values(status="failed", failed_stage="interrupted", error_message=msg))
+        db.execute(update(Analysis).where(Analysis.status == "running")
+                   .values(status="failed", error_message=msg))
+        db.commit()
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     config.upload_dir.mkdir(parents=True, exist_ok=True)
     init_db()
+    _recover_interrupted_jobs()
     yield
 
 
