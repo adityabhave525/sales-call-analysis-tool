@@ -9,3 +9,4 @@ export const api: CallAnalyzerApi = mockApi
 
 export { ApiError, isApiError } from "./contract"
 export type { CallAnalyzerApi } from "./contract"
+ 
