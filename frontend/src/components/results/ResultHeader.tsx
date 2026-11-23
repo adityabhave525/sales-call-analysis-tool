@@ -21,9 +21,11 @@ interface ResultHeaderProps {
   job: JobOut
   analysis: AnalysisOut
   languageCode: string | null
+  /** right-aligned slot, e.g. the version picker */
+  actions?: ReactNode
 }
 
-export function ResultHeader({ job, analysis, languageCode }: ResultHeaderProps) {
+export function ResultHeader({ job, analysis, languageCode, actions }: ResultHeaderProps) {
   const model = MODEL_OPTIONS.find((m) => m.value === analysis.llm_model)?.label ?? analysis.llm_model
   const language = languageName(languageCode)
 
@@ -35,9 +37,12 @@ export function ResultHeader({ job, analysis, languageCode }: ResultHeaderProps)
           All analyses
         </Link>
       </Button>
-      <h1 className="truncate text-2xl font-semibold tracking-tight" title={job.original_filename}>
-        {job.original_filename}
-      </h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="min-w-0 truncate text-2xl font-semibold tracking-tight" title={job.original_filename}>
+          {job.original_filename}
+        </h1>
+        {actions}
+      </div>
       <ul className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
         <Meta icon={Calendar}>{formatDateTime(analysis.completed_at ?? analysis.created_at)}</Meta>
         <Meta icon={Timer}>{formatDuration(job.duration_ms)}</Meta>

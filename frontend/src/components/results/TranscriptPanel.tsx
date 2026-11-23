@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import type { useTranscriptInteraction } from "@/hooks/useTranscriptInteraction"
 import { formatClock } from "@/lib/format"
 import { isLowConfidence, speakerName, type LineMarkers } from "@/lib/results"
+import { RoleControl } from "./RoleControl"
 import { cn } from "@/lib/utils"
 import type { Role, SpeakerOut, UtteranceOut } from "@/types/api"
 
@@ -70,6 +71,9 @@ const TranscriptLine = memo(function TranscriptLine({ u, markers, isActive, isPl
 })
 
 interface TranscriptPanelProps {
+  jobId: string
+  /** lock role changes, e.g. while a re-analysis is running */
+  rolesDisabled?: boolean
   title?: string
   utterances: readonly UtteranceOut[]
   speakers: readonly SpeakerOut[]
@@ -79,6 +83,8 @@ interface TranscriptPanelProps {
 }
 
 export function TranscriptPanel({
+  jobId,
+  rolesDisabled = false,
   title = "Transcript",
   utterances,
   speakers,
@@ -99,20 +105,13 @@ export function TranscriptPanel({
       <div className="space-y-3 border-b p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-base font-semibold">{title}</h2>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {speakers.map((s) => (
-              <Badge key={s.label} variant="secondary" className="font-normal">
-                {speakerName(s.role, s.label)}
-                {s.role !== "unknown" && ` = Speaker ${s.label}`}
-              </Badge>
-            ))}
-            {uncertainRoles && (
-              <Badge variant="outline" className="border-amber-200 bg-amber-50 font-normal text-amber-900">
-                Roles uncertain
-              </Badge>
-            )}
-          </div>
+          {uncertainRoles && (
+            <Badge variant="outline" className="border-amber-200 bg-amber-50 font-normal text-amber-900">
+              Roles uncertain
+            </Badge>
+          )}
         </div>
+        <RoleControl jobId={jobId} speakers={speakers} disabled={rolesDisabled} />
         <audio
           ref={audioRef}
           controls

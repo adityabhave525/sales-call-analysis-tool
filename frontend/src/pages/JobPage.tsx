@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router"
+import { Link, useParams, useSearchParams } from "react-router"
 
 import { Notice } from "@/components/common/Notice"
 import { FailedView } from "@/components/processing/FailedView"
@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useJob, useResult } from "@/hooks/useJobs"
 import { describeError } from "@/lib/errors"
 import { isJobBusy } from "@/lib/jobs"
+import { parseVersionParam } from "@/lib/versions"
 
 function BackButton() {
   return (
@@ -36,14 +37,26 @@ function ResultsSkeleton() {
   )
 }
 
-/** One URL, three screens: processing while the backend works, results when done, recovery if it failed. */
+/**
+ * One URL, four screens:
+ *  - first run in progress      -> processing screen
+ *  - re-analysis in progress    -> the previous result, dimmed, with a banner
+ *  - completed                  -> results (?v=N shows an older version)
+ *  - failed                     -> recovery
+ */
 export function JobPage() {
   const { id = "" } = useParams()
+  const [params, setParams] = useSearchParams()
+  const version = parseVersionParam(params.get("v"))
+
   const job = useJob(id)
   const status = job.data?.status
   const busy = status ? isJobBusy(status) : false
-  // fetch the full result once the job stops changing (completed OR failed: a failed job may still have a transcript)
-  const result = useResult(id, status !== undefined && !busy)
+  // Fetched once the job stops changing. While busy this query is disabled but keeps its cached data,
+  // which is exactly what lets a re-analysis show the previous result underneath.
+  const result = useResult(id, status !== undefined && !busy, version)
+
+  const selectVersion = (v: number | null) => setParams(v === null ? {} : { v: String(v) })
 
   if (job.isPending) return <ResultsSkeleton />
 
@@ -56,7 +69,17 @@ export function JobPage() {
   }
 
   const j = job.data!
-  if (busy) return <ProcessingView job={j} />
+
+  if (busy) {
+    const previous = result.data
+    if (previous?.analysis && previous.analysis.status === "completed") {
+      return <ResultsView result={previous} analysis={previous.analysis} reanalysing onSelectVersion={selectVersion} />
+    }
+    // first run, or a retry of a failed job: count from when this stage began, not from the upload
+    const startIso = previous && previous.utterances.length > 0 ? j.updated_at : j.created_at
+    return <ProcessingView job={j} startIso={startIso} />
+  }
+
   if (j.status === "failed") return <FailedView job={j} result={result.data} />
 
   // completed
@@ -66,15 +89,23 @@ export function JobPage() {
       <Notice
         title="Couldn't load the results"
         action={
-          <Button variant="outline" size="sm" onClick={() => result.refetch()}>
-            Try again
-          </Button>
+          <div className="flex gap-2">
+            {version !== undefined && (
+              <Button variant="outline" size="sm" onClick={() => selectVersion(null)}>
+                Show latest
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={() => result.refetch()}>
+              Try again
+            </Button>
+          </div>
         }
       >
         {describeError(result.error)}
       </Notice>
     )
   }
+
   const data = result.data!
   if (!data.analysis) {
     return (
@@ -83,5 +114,19 @@ export function JobPage() {
       </Notice>
     )
   }
-  return <ResultsView result={data} analysis={data.analysis} />
+  if (data.analysis.status !== "completed") {
+    return (
+      <Notice
+        title={`Version ${data.analysis.version} didn't finish`}
+        action={
+          <Button variant="outline" size="sm" onClick={() => selectVersion(null)}>
+            Show latest
+          </Button>
+        }
+      >
+        {data.analysis.error_message ?? "That analysis failed."}
+      </Notice>
+    )
+  }
+  return <ResultsView result={data} analysis={data.analysis} onSelectVersion={selectVersion} />
 }

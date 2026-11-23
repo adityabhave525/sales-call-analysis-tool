@@ -112,6 +112,14 @@ def run_analysis(job_id: str, settings: AnalysisSettings) -> None:
                 raise AnalysisError("This call is too long to analyse in one pass. Try a shorter recording.")
 
             speakers, roles_in, roles_out = _ensure_roles(db, job, utterances, settings)
+            # Remember which roles this run used, so the UI can tell when a later
+            # role swap means the result is out of date. Lives inside the existing
+            # JSON column, so no migration is needed.
+            analysis.settings_snapshot = {
+                **settings.model_dump(),
+                "roles_used": {s.label: s.role for s in speakers.values()},
+            }
+
             views = [
                 UttView(idx=u.idx, speaker=u.speaker_label,
                         role=speakers[u.speaker_label].role if u.speaker_label in speakers else "unknown",

@@ -65,6 +65,15 @@ export function useReanalyse() {
   })
 }
 
+/** "Swap roles": sets who the rep is. Applies to the NEXT analysis, so callers usually offer a re-analyse. */
+export function useAssignRep() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, repLabel }: { id: string; repLabel: string }) => api.assignRep(id, repLabel),
+    onSuccess: (_speakers, { id }) => qc.invalidateQueries({ queryKey: ["jobs", "result", id] }),
+  })
+}
+
 export function useDeleteJob() {
   const qc = useQueryClient()
   return useMutation({

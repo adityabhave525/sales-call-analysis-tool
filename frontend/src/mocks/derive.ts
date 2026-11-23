@@ -174,7 +174,10 @@ export function deriveAnalysis(input: DeriveInput): AnalysisOut {
     version: input.version,
     status: "completed",
     llm_model: settings.llm_model,
-    settings_snapshot: structuredClone(settings),
+    settings_snapshot: {
+      ...structuredClone(settings),
+      roles_used: Object.fromEntries(speakers.map((sp) => [sp.label, sp.role])),
+    },
     tone,
     tone_confidence: toneConfidence,
     needs_review: needsReview,

@@ -63,8 +63,9 @@ const BUSY = new Set(["queued", "transcribing", "analysing"])
 const isBusy = (m: MockJob) => BUSY.has(m.job.status)
 
 function touch(m: MockJob, status: JobOut["status"]): void {
+  // like the backend, updated_at only moves when something actually changes
+  if (m.job.status !== status) m.job.updated_at = serverIso(mockControls.now())
   m.job.status = status
-  m.job.updated_at = serverIso(mockControls.now())
 }
 
 function failJob(m: MockJob, stage: string, message: string): void {

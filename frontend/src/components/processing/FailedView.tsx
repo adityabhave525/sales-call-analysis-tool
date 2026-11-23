@@ -84,6 +84,8 @@ export function FailedView({ job, result }: FailedViewProps) {
       {hasTranscript && result && (
         <div className="mx-auto w-full max-w-3xl">
           <TranscriptPanel
+            jobId={job.id}
+            rolesDisabled={reanalyse.isPending}
             title="Transcript (analysis not completed)"
             utterances={utterances}
             speakers={result.speakers}

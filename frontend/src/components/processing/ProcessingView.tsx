@@ -9,8 +9,9 @@ import { activeStepIndex, STATUS_LABEL } from "@/lib/jobs"
 import type { JobOut } from "@/types/api"
 import { StepList } from "./StepList"
 
-export function ProcessingView({ job }: { job: JobOut }) {
-  const elapsed = useElapsedMs(job.created_at)
+/** `startIso` lets a retry count from when the retry began instead of from the original upload. */
+export function ProcessingView({ job, startIso }: { job: JobOut; startIso?: string }) {
+  const elapsed = useElapsedMs(startIso ?? job.created_at)
 
   return (
     <Card className="mx-auto w-full max-w-xl">

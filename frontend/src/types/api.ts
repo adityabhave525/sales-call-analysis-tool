@@ -98,13 +98,19 @@ export interface ActionItemOut {
   confidence: number | null
 }
 
+/** What the backend stores per analysis: the settings used, plus which roles were assigned at the time. */
+export type AnalysisSnapshot = AnalysisSettings & {
+  /** speaker label -> role used for this run. Absent on analyses made before this was recorded. */
+  roles_used?: Record<string, Role>
+}
+
 export interface AnalysisOut {
   id: number
   version: number
   status: AnalysisStatus
   llm_model: string
   /** The exact settings this run used. Compare with current settings to show "settings changed". */
-  settings_snapshot: AnalysisSettings
+  settings_snapshot: AnalysisSnapshot
   tone: Tone | null
   tone_confidence: number | null
   needs_review: boolean

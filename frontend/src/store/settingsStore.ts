@@ -37,6 +37,8 @@ interface SettingsState {
   setIncludeCustomerActions: (value: boolean) => void
   setActionSpecificity: (value: ActionSpecificity) => void
   setCustomInstructions: (text: string) => void
+  /** Replace everything, e.g. "use the settings from that older analysis". Sanitised. */
+  loadSettings: (settings: unknown) => void
   resetToDefaults: () => void
 }
 
@@ -66,6 +68,7 @@ export const useSettingsStore = create<SettingsState>()(
         setActionSpecificity: (action_item_specificity) =>
           update((s) => ({ ...s, action_item_specificity })),
         setCustomInstructions: (text) => update((s) => withCustomInstructions(s, text)),
+        loadSettings: (settings) => set({ settings: sanitizeSettings(settings) }),
         resetToDefaults: () => set({ settings: createDefaultSettings() }),
       }
     },
