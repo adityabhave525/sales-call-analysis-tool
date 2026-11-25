@@ -59,6 +59,13 @@ export function deriveAnalysis(input: DeriveInput): AnalysisOut {
   const candidates = raw.evidence.filter((e) => enabled.has(e.criterion))
   const modelNegative = raw.negative && candidates.length > 0
 
+  const voiceOn = settings.voice_mode !== "off" && !!scenario.voice
+  let droppedVoice = 0
+  let downgradedVoice = 0
+  if (settings.voice_mode !== "off" && !scenario.voice) {
+    warnings.push("Voice analysis is not configured (no Behavioral Signals keys), so tone was judged from the words only.")
+  }
+
   let droppedUnverified = 0
   let droppedNotRep = 0
   const evidence: ToneEvidenceOut[] = []
@@ -72,6 +79,17 @@ export function deriveAnalysis(input: DeriveInput): AnalysisOut {
       droppedNotRep++
       continue
     }
+    // a voice claim needs a measured flag on that very line
+    const flags = voiceOn ? (scenario.voice!.lines[u.idx]?.flags ?? []) : []
+    let basis = e.basis ?? "words"
+    if (basis !== "words" && flags.length === 0) {
+      if (basis === "voice") {
+        droppedVoice++
+        continue
+      }
+      basis = "words"
+      downgradedVoice++
+    }
     evidence.push({
       id: nextId(),
       utterance_id: u.id,
@@ -80,8 +98,12 @@ export function deriveAnalysis(input: DeriveInput): AnalysisOut {
       criterion: e.criterion,
       severity: e.severity,
       explanation: e.explanation,
+      basis,
+      voice_cues: flags.map((f) => f.label.toLowerCase()),
     })
   }
+  if (voiceOn && droppedVoice) warnings.push(`${droppedVoice} voice-based claim(s) had no measured voice signal behind them and were removed.`)
+  if (voiceOn && downgradedVoice) warnings.push(`${downgradedVoice} evidence item(s) claimed a vocal quality that was not measured; they now rest on the words only.`)
   if (droppedUnverified) {
     warnings.push(`${droppedUnverified} tone quote(s) could not be found in the transcript and were removed.`)
   }
@@ -116,11 +138,18 @@ export function deriveAnalysis(input: DeriveInput): AnalysisOut {
         ? "Nothing in the rep's speech matched the tone criteria that are switched on."
         : raw.explanation
 
-    if (modelNegative && evidence.length > 0 && conf >= settings.red_confidence_threshold) {
+    // voice-only evidence counts toward RED only in "strong" mode
+    const counting = evidence.filter((ev) => ev.basis !== "voice" || settings.voice_mode === "strong")
+    if (modelNegative && counting.length > 0 && conf >= settings.red_confidence_threshold) {
       tone = "RED"
     } else {
       tone = "GREEN"
-      if (modelNegative && evidence.length > 0) {
+      if (modelNegative && evidence.length > 0 && counting.length === 0) {
+        needsReview = true
+        warnings.push(
+          "Only the rep's voice suggested a negative tone, not the words. Set voice analysis to 'Strong' if voice alone should be enough for RED. Review this call.",
+        )
+      } else if (modelNegative && evidence.length > 0) {
         needsReview = true
         warnings.push(
           `Possible negative tone, but confidence (${pct(conf)}) is below your RED threshold (${pct(settings.red_confidence_threshold)}).`,

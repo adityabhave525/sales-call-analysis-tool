@@ -4,6 +4,7 @@ import {
   MODEL_OPTIONS,
   SENSITIVITY_OPTIONS,
   SPECIFICITY_OPTIONS,
+  VOICE_MODE_OPTIONS,
   sanitizeSettings,
 } from "@/lib/settings"
 import type { Role, SpeakerOut } from "@/types/api"
@@ -28,6 +29,9 @@ export function describeSettingsChanges(current: unknown, used: unknown): string
   }
   if (a.tone_sensitivity !== b.tone_sensitivity) {
     out.push(`Sensitivity: ${labelOf(SENSITIVITY_OPTIONS, b.tone_sensitivity)} → ${labelOf(SENSITIVITY_OPTIONS, a.tone_sensitivity)}`)
+  }
+  if (a.voice_mode !== b.voice_mode) {
+    out.push(`Voice analysis: ${labelOf(VOICE_MODE_OPTIONS, b.voice_mode)} → ${labelOf(VOICE_MODE_OPTIONS, a.voice_mode)}`)
   }
   if (a.red_confidence_threshold !== b.red_confidence_threshold) {
     out.push(`RED threshold: ${pct(b.red_confidence_threshold)} → ${pct(a.red_confidence_threshold)}`)

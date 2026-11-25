@@ -1,0 +1,13 @@
+-- for backend
+    tonality ()
+    regional language support
+
+    system vs user rules
+    sensitivity and red threshold
+
+    evals not confidence (for user's experience) (how do i use evals to come up with my confidence score?)
+    anthropic sdks (how do i process large calls in chunks)
+
+
+-- for me
+    improve communication

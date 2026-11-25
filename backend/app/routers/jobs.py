@@ -14,9 +14,11 @@ from ..database import get_db
 from ..models import Job, JobStatus
 from ..schemas import (
     AnalysisOut, AnalysisSettings, JobOut, JobResultOut, RepAssignment,
-    SpeakerOut, UtteranceOut, VersionOut,
+    SpeakerOut, UtteranceOut, UtteranceVoiceOut, VersionOut, VoiceStatusOut,
 )
 from ..services.pipeline import run_pipeline, run_reanalysis
+from ..services.voice_features import public_view
+from ..services.voice_store import load_signals
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
@@ -144,11 +146,25 @@ def get_result(job_id: str, version: int | None = None, db: Session = Depends(ge
     language = None
     if job.transcript:
         language = job.transcript.language_code
+        signals = load_signals(job)
+        # Flags use the sensitivity of the analysis being viewed, so the chips match its verdict.
+        chosen_for_voice = None
+        if version is not None:
+            chosen_for_voice = next((a for a in job.analyses if a.version == version), None)
+        else:
+            done = [a for a in job.analyses if a.status == "completed"]
+            chosen_for_voice = done[-1] if done else None
+        sens = ((chosen_for_voice.settings_snapshot or {}).get("tone_sensitivity", "balanced")
+                if chosen_for_voice else "balanced")
+        voice_on = ((chosen_for_voice.settings_snapshot or {}).get("voice_mode", "off")
+                    if chosen_for_voice else "off") != "off"
         utterances = [
             UtteranceOut(
                 id=u.id, idx=u.idx, speaker_label=u.speaker_label,
                 role=speakers[u.speaker_label].role if u.speaker_label in speakers else "unknown",
-                start_ms=u.start_ms, end_ms=u.end_ms, text=u.text, confidence=u.confidence)
+                start_ms=u.start_ms, end_ms=u.end_ms, text=u.text, confidence=u.confidence,
+                voice=(UtteranceVoiceOut(**public_view(signals[u.id], sens))
+                       if voice_on and u.id in signals and public_view(signals[u.id], sens) else None))
             for u in job.transcript.utterances
         ]
 
@@ -169,6 +185,9 @@ def get_result(job_id: str, version: int | None = None, db: Session = Depends(ge
         analysis=AnalysisOut.model_validate(chosen) if chosen else None,
         versions=[VersionOut(version=a.version, status=a.status, tone=a.tone,
                              llm_model=a.llm_model, created_at=a.created_at) for a in analyses],
+        voice=(VoiceStatusOut(status=job.voice.status, message=job.voice.message,
+                              quality=job.voice.quality, coverage=job.voice.coverage)
+               if job.voice else None),
     )
 
 

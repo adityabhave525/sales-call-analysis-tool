@@ -22,6 +22,10 @@ class ToneEvidenceItem(BaseModel):
     criterion: str = Field(description="Key of the tone criterion this shows, or 'other'")
     severity: Literal["low", "medium", "high"]
     explanation: str = Field(description="Why this is negative, in one sentence")
+    basis: Literal["words", "voice", "words_and_voice"] = Field(
+        default="words",
+        description=("What this evidence rests on. 'words' = the wording alone. 'voice' = only the measured voice "
+                     "note on that line. 'words_and_voice' = both. Use a voice basis only if that line has a {voice: ...} note."))
 
 
 class ActionItemOut(BaseModel):

@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MODEL_OPTIONS, SENSITIVITY_OPTIONS } from "@/lib/settings"
+import { MODEL_OPTIONS, SENSITIVITY_OPTIONS, VOICE_MODE_OPTIONS } from "@/lib/settings"
 import { useSettingsStore } from "@/store/settingsStore"
 import { useUiStore } from "@/store/uiStore"
 
@@ -16,6 +16,7 @@ export function SettingsSummary({ showEdit = true }: { showEdit?: boolean }) {
   const chips = [
     `${sensitivity} sensitivity`,
     `RED at ${Math.round(settings.red_confidence_threshold * 100)}%+ confidence`,
+    `Voice: ${VOICE_MODE_OPTIONS.find((o) => o.value === settings.voice_mode)?.label ?? settings.voice_mode}`,
     `${criteriaOn} of ${settings.tone_criteria.length} tone criteria`,
     `${settings.action_item_types.length} action item types`,
     model,

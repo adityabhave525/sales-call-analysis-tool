@@ -19,6 +19,10 @@ export type ToneSensitivity = "lenient" | "balanced" | "strict"
 export type ActionType = "commitment" | "follow_up" | "send_information" | "schedule_meeting"
 export type ActionSpecificity = "any" | "concrete_only"
 export type LlmModel = "claude-haiku-5-5" | "claude-sonnet-5-5"
+/** off: ignore voice | supporting: voice backs up the words | strong: voice alone can justify RED */
+export type VoiceMode = "off" | "supporting" | "strong"
+/** What a piece of tone evidence rests on. null/absent on analyses made before voice existed. */
+export type EvidenceBasis = "words" | "voice" | "words_and_voice"
 
 // ---------- Settings (sent with each upload / re-analysis) ----------
 export interface ToneCriterion {
@@ -37,6 +41,7 @@ export interface AnalysisSettings {
   action_item_types: ActionType[]
   include_customer_actions: boolean
   action_item_specificity: ActionSpecificity
+  voice_mode: VoiceMode
   /** max 1000 chars */
   custom_instructions: string
 }
@@ -55,6 +60,33 @@ export interface JobOut {
   updated_at: string
 }
 
+export interface VoiceFlagOut {
+  key: string // "angry" | "shouting" | "heated" | "agitated"
+  label: string
+  strength: "low" | "medium" | "high"
+}
+
+/** Measured vocal signals for one line. Flags already reflect the analysis's sensitivity. */
+export interface UtteranceVoiceOut {
+  coverage: number | null
+  flags: VoiceFlagOut[]
+  cues: string[]
+  /** 0-1 energy and -1..1 positivity; null when the provider didn't return them */
+  arousal: number | null
+  valence: number | null
+  angry: number | null
+  /** how far from this speaker's own norm, in robust standard deviations */
+  arousal_z: number | null
+  valence_z: number | null
+}
+
+export interface VoiceStatusOut {
+  status: "ok" | "failed" | "unavailable"
+  message: string | null
+  quality: number | null
+  coverage: number | null
+}
+
 export interface UtteranceOut {
   id: number
   idx: number
@@ -64,6 +96,8 @@ export interface UtteranceOut {
   end_ms: number
   text: string
   confidence: number | null
+  /** absent when voice analysis is off or unavailable for this line */
+  voice?: UtteranceVoiceOut | null
 }
 
 export interface SpeakerOut {
@@ -82,6 +116,9 @@ export interface ToneEvidenceOut {
   criterion: string | null
   severity: Severity
   explanation: string | null
+  basis?: EvidenceBasis | null
+  /** measured vocal cues on that line, e.g. "angry-sounding voice" */
+  voice_cues?: string[] | null
 }
 
 export interface ActionItemOut {
@@ -141,6 +178,7 @@ export interface JobResultOut {
   /** null until the first analysis completes */
   analysis: AnalysisOut | null
   versions: VersionOut[]
+  voice?: VoiceStatusOut | null
 }
 
 // ---------- Requests ----------
@@ -153,6 +191,8 @@ export interface HealthOut {
   status: "ok"
   assemblyai_key_set: boolean
   anthropic_key_set: boolean
+  /** absent on older backends */
+  behavioralsignals_key_set?: boolean
 }
 
 /** FastAPI error shapes: HTTPException => string, validation => list. */

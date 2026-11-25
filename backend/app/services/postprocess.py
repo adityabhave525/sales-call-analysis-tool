@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from .verification import normalize, verify_quote
 
 LOW_CONFIDENCE = 0.6
+LOW_AUDIO_QUALITY = 0.4
 MAX_EVIDENCE = 8
 MAX_ACTION_ITEMS = 30
 
@@ -24,6 +25,7 @@ class UttView:
     start_ms: int
     text: str
     db_id: int | None = None
+    voice: dict | None = None   # {'flags': [...], 'cues': [...]} from voice_features.describe
 
 
 @dataclass
@@ -98,6 +100,10 @@ def postprocess(
     include_customer: bool,
     rep_role_confidence: float | None,
     language_code: str | None = None,
+    voice_mode: str = "off",
+    voice_available: bool = False,
+    voice_note: str | None = None,
+    voice_quality: float | None = None,
 ) -> Outcome:
     by_idx = {u.idx: u for u in utts}
     texts = {u.idx: u.text for u in utts}
@@ -109,9 +115,13 @@ def postprocess(
         warnings.append(f"Detected language '{language_code}'. The analysis is tuned for English and may be less reliable.")
         needs_review = True
 
+    voice_on = voice_mode != "off"
+    if voice_on and not voice_available and voice_note:
+        warnings.append(voice_note)
+
     # ---------- tone evidence ----------
     evidence: list[dict] = []
-    dropped_unverified = dropped_not_rep = 0
+    dropped_unverified = dropped_not_rep = dropped_voice = downgraded_voice = 0
     for ev in raw.get("tone_evidence") or []:
         m = verify_quote(ev.get("quote", ""), texts, _int_or_none(ev.get("utterance_index")))
         if not m.verified:
@@ -121,7 +131,18 @@ def postprocess(
         if utt.role != "rep":
             dropped_not_rep += 1   # tone is judged on the rep only
             continue
+        # Voice claims must be backed by a measured flag on that very line.
+        measured = bool(voice_on and voice_available and utt.voice and utt.voice.get("flags"))
+        basis = ev.get("basis") if ev.get("basis") in ("words", "voice", "words_and_voice") else "words"
+        if basis != "words" and not measured:
+            if basis == "voice":
+                dropped_voice += 1      # nothing but an unmeasured voice claim: remove it
+                continue
+            basis = "words"
+            downgraded_voice += 1
         evidence.append({
+            "basis": basis,
+            "voice_cues": list(utt.voice["cues"]) if measured else [],
             "utterance_idx": utt.idx, "utterance_db_id": utt.db_id,
             "quote": _display_quote(ev.get("quote", ""), utt, m.method),
             "start_ms": utt.start_ms,
@@ -135,6 +156,10 @@ def postprocess(
         warnings.append(f"{dropped_unverified} tone quote(s) could not be found in the transcript and were removed.")
     if dropped_not_rep:
         warnings.append(f"{dropped_not_rep} tone quote(s) were from the customer, not the rep, and were ignored.")
+    if voice_on and dropped_voice:
+        warnings.append(f"{dropped_voice} voice-based claim(s) had no measured voice signal behind them and were removed.")
+    if voice_on and downgraded_voice:
+        warnings.append(f"{downgraded_voice} evidence item(s) claimed a vocal quality that was not measured; they now rest on the words only.")
 
     model_negative = bool(raw.get("rep_tone_negative"))
     conf = clamp01(raw.get("tone_confidence"))
@@ -149,11 +174,17 @@ def postprocess(
         warnings.append("No speaker was identified as the sales rep.")
     else:
         tone_conf = conf
-        if model_negative and evidence and conf >= red_threshold:
+        # Voice-only evidence counts toward RED only in 'strong' mode.
+        counting = [e for e in evidence if e["basis"] != "voice" or voice_mode == "strong"]
+        if model_negative and counting and conf >= red_threshold:
             tone = "RED"
         else:
             tone = "GREEN"
-            if model_negative and evidence:
+            if model_negative and evidence and not counting:
+                needs_review = True
+                warnings.append("Only the rep's voice suggested a negative tone, not the words. Set voice analysis to "
+                                "'Strong' if voice alone should be enough for RED. Review this call.")
+            elif model_negative and evidence:
                 needs_review = True
                 warnings.append(
                     f"Possible negative tone, but confidence ({conf:.0%}) is below your RED threshold ({red_threshold:.0%}).")
@@ -162,6 +193,10 @@ def postprocess(
                 warnings.append("The model suspected negative tone but no quote from the rep could be verified, so it was not flagged RED.")
         if conf < LOW_CONFIDENCE:
             needs_review = True
+        if (voice_on and voice_available and voice_quality is not None and voice_quality < LOW_AUDIO_QUALITY
+                and any(e["basis"] != "words" for e in evidence)):
+            needs_review = True
+            warnings.append("The recording quality is low, so voice-based findings are less reliable.")
         if rep_role_confidence is not None and rep_role_confidence < LOW_CONFIDENCE:
             needs_review = True
             warnings.append("Rep/customer roles were inferred with low confidence. Check them and swap if needed.")

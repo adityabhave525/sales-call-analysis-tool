@@ -1,5 +1,6 @@
 """Background pipeline: transcribe -> (roles + analysis). Runs in a worker thread."""
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 from ..config import config
 from ..database import SessionLocal
@@ -7,6 +8,8 @@ from ..models import Job, JobStatus, Speaker, Transcript, Utterance
 from ..schemas import AnalysisSettings
 from .analysis import run_analysis
 from .transcription import TranscriptData, TranscriptionError, transcribe_file
+from .voice_client import fetch_voice, is_configured
+from .voice_store import store_voice
 
 log = logging.getLogger(__name__)
 
@@ -49,13 +52,28 @@ def run_pipeline(job_id: str, settings: AnalysisSettings) -> None:
             db.commit()
             path = config.upload_dir / job.stored_filename
 
-        data = transcribe_file(path)  # slow; no DB transaction held open
+        # Transcription and voice analysis are independent, so run them side by side.
+        # fetch_voice never raises; a voice failure only means "judge tone from words".
+        want_voice = settings.voice_mode != "off" and is_configured()
+        pool = ThreadPoolExecutor(max_workers=1)
+        try:
+            voice_future = pool.submit(fetch_voice, path) if want_voice else None
+            data = transcribe_file(path)  # slow; no DB transaction held open
+            voice = voice_future.result() if voice_future else None
+        finally:
+            pool.shutdown(wait=False)   # if transcription failed, don't make the user wait for voice
 
         with SessionLocal() as db:
             job = db.get(Job, job_id)
             if job is None:  # deleted while processing
                 return
             _save_transcript(db, job, data)
+            if voice is not None:
+                try:
+                    store_voice(db, job, voice)
+                except Exception:
+                    log.exception("Could not store voice analysis for job %s", job_id)
+                    db.rollback()
 
         run_analysis(job_id, settings)
     except TranscriptionError as exc:

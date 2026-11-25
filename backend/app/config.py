@@ -11,6 +11,14 @@ class Config(BaseSettings):
     assemblyai_api_key: str = ""
     anthropic_api_key: str = ""
 
+    # Behavioral Signals (voice emotion/tone). Optional: without keys the app
+    # still works and judges tone from the words alone.
+    behavioralsignals_cid: str = ""
+    behavioralsignals_api_key: str = ""
+    voice_timeout_s: int = 900
+    voice_convert: str = "auto"        # auto | always | never  (convert audio to 16 kHz mono WAV before upload)
+    voice_min_coverage: float = 0.3    # ignore an utterance's voice signals if the provider covered less than this
+
     # Comma-separated, in priority order. AssemblyAI falls back to the next model
     # for languages the first one doesn't support. If AssemblyAI rejects a name,
     # change it here (no code edit needed).

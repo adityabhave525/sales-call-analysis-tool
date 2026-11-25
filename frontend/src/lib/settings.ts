@@ -13,6 +13,7 @@ import type {
   LlmModel,
   ToneCriterion,
   ToneSensitivity,
+  VoiceMode,
 } from "@/types/api"
 
 // ---------- Limits (enforced here and by the backend) ----------
@@ -76,6 +77,7 @@ export function createDefaultSettings(): AnalysisSettings {
     action_item_types: [...ALL_ACTION_TYPES],
     include_customer_actions: true,
     action_item_specificity: "concrete_only",
+    voice_mode: "supporting",
     custom_instructions: "",
   }
 }
@@ -89,6 +91,20 @@ export const SENSITIVITY_OPTIONS: readonly {
   { value: "lenient", label: "Lenient", description: "Only clear rudeness or hostility is flagged." },
   { value: "balanced", label: "Balanced", description: "Flags what a sales manager would call unprofessional." },
   { value: "strict", label: "Strict", description: "Also flags subtle condescension, impatience and brush-offs." },
+]
+
+export const VOICE_MODE_OPTIONS: readonly { value: VoiceMode; label: string; description: string }[] = [
+  { value: "off", label: "Off", description: "Judge tone from the words only. The audio is not sent for voice analysis." },
+  {
+    value: "supporting",
+    label: "Supporting",
+    description: "Voice can back up the words, but a call is never RED on voice alone.",
+  },
+  {
+    value: "strong",
+    label: "Strong",
+    description: "A clearly angry or hostile delivery can mark a call RED even if the words look neutral.",
+  },
 ]
 
 export const ACTION_TYPE_OPTIONS: readonly {
@@ -215,6 +231,7 @@ export function sanitizeSettings(input: unknown): AnalysisSettings {
       SPECIFICITY_OPTIONS.map((o) => o.value),
       d.action_item_specificity,
     ),
+    voice_mode: pick(input.voice_mode, VOICE_MODE_OPTIONS.map((o) => o.value), d.voice_mode),
     custom_instructions:
       typeof input.custom_instructions === "string"
         ? input.custom_instructions.slice(0, LIMITS.customInstructionsMax)

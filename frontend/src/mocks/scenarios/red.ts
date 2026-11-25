@@ -1,6 +1,7 @@
 import { buildUtterances, type ScriptLine } from "../script"
 import { NO_ISSUES_RAW } from "../derive"
 import type { RawAnalysis, Scenario } from "../types"
+import { calm, flagged } from "./voiceLines"
 
 const LINES: ScriptLine[] = [
   ["A", "BrightPath Software, Dave speaking. How can I help you?"],
@@ -43,6 +44,7 @@ const RED_RAW: RawAnalysis = {
       criterion: "hostility",
       severity: "high",
       explanation: "Blames the customer directly.",
+      basis: "words_and_voice",
     },
     {
       utterance_index: 8,
@@ -50,6 +52,7 @@ const RED_RAW: RawAnalysis = {
       criterion: "dismissiveness",
       severity: "high",
       explanation: "Minimises the customer's concern and refuses to engage.",
+      basis: "words_and_voice",
     },
     {
       utterance_index: 10,
@@ -76,6 +79,15 @@ export const redScenario: Scenario = {
     "The customer disputes being billed for 12 seats when only 8 are in use. The rep points to the terms, declines to adjust the invoice, " +
     "and agrees to send an invoice breakdown and note a request for a manager callback.",
   raw: (rep) => (rep === "A" ? RED_RAW : NO_ISSUES_RAW),
+  voice: {
+    quality: 0.78,
+    lines: {
+      0: calm(0.35), 1: calm(0.5, -0.2), 2: calm(0.4), 3: calm(0.48, -0.3), 4: calm(0.52, -0.1),
+      5: calm(0.5, -0.2), 6: flagged("angry", 0.86, -0.7, 2.5), 7: calm(0.55, -0.4),
+      8: flagged("heated", 0.74, -0.6, 2.0), 9: calm(0.5, -0.4), 10: flagged("agitated", 0.66, -0.4, 1.7),
+      11: calm(0.45, -0.3), 12: calm(0.36), 13: calm(0.4, -0.2), 14: calm(0.38), 15: calm(0.3),
+    },
+  },
   pool: [
     {
       utterance_index: 12,

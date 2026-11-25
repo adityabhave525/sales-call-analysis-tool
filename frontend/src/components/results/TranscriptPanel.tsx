@@ -2,6 +2,7 @@ import { memo, useCallback, useState } from "react"
 import { ListChecks, Play } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
+import { describeVoice } from "@/lib/voice"
 import type { useTranscriptInteraction } from "@/hooks/useTranscriptInteraction"
 import { formatClock } from "@/lib/format"
 import { isLowConfidence, speakerName, type LineMarkers } from "@/lib/results"
@@ -42,6 +43,19 @@ const TranscriptLine = memo(function TranscriptLine({ u, markers, isActive, isPl
           <Play className="size-3" />
           {formatClock(u.start_ms)}
         </button>
+        {u.voice?.flags.map((f) => (
+          <Badge
+            key={f.key}
+            variant="outline"
+            title={describeVoice(u)}
+            className={cn(
+              "px-1.5 py-0 text-[10px] font-normal",
+              u.role === "rep" ? "border-orange-200 bg-orange-50 text-orange-900" : "border-stone-300 bg-stone-50 text-stone-700",
+            )}
+          >
+            {f.label}
+          </Badge>
+        ))}
         {markers?.evidence && (
           <Badge variant="outline" className="border-amber-200 bg-amber-50 px-1.5 py-0 text-[10px] font-normal text-amber-900">
             Tone evidence

@@ -16,6 +16,8 @@ from .postprocess import UttView, normalize_roles, postprocess
 from .prompts import (ROLES_SYSTEM, build_roles_message, build_system_prompt,
                       build_user_message)
 from .schema_utils import inline_refs
+from .voice_features import describe
+from .voice_store import ensure_voice, load_signals
 
 log = logging.getLogger(__name__)
 
@@ -119,11 +121,20 @@ def run_analysis(job_id: str, settings: AnalysisSettings) -> None:
                 **settings.model_dump(),
                 "roles_used": {s.label: s.role for s in speakers.values()},
             }
-
+            # Voice: fetched once per job (kept in the DB); a failure only means "words only".
+            voice_on = settings.voice_mode != "off"
+            ensure_voice(db, job, voice_on)
+            db.refresh(job)
+            vrow = job.voice
+            voice_available = bool(voice_on and vrow is not None and vrow.status == "ok" and (vrow.coverage or 0) > 0)
+            voice_note = None if voice_available else (
+                vrow.message if vrow is not None else "Voice analysis has not been run for this call.")
+            signals = load_signals(job) if voice_available else {}
             views = [
                 UttView(idx=u.idx, speaker=u.speaker_label,
                         role=speakers[u.speaker_label].role if u.speaker_label in speakers else "unknown",
-                        start_ms=u.start_ms, text=u.text, db_id=u.id)
+                        start_ms=u.start_ms, text=u.text, db_id=u.id,
+                        voice=describe(signals.get(u.id), settings.tone_sensitivity) if u.id in signals else None)
                 for u in utterances
             ]
             rep = next((s for s in speakers.values() if s.role == "rep"), None)
@@ -131,8 +142,8 @@ def run_analysis(job_id: str, settings: AnalysisSettings) -> None:
 
             res = call_tool(
                 model=settings.llm_model,
-                system=build_system_prompt(settings),
-                user=build_user_message(views),
+                system=build_system_prompt(settings, voice_available),
+                user=build_user_message(views, voice_available),
                 tool_name="submit_analysis",
                 tool_description="Submit the tone assessment, evidence and action items for this call.",
                 schema=inline_refs(AnalysisToolOutput.model_json_schema()),
@@ -146,6 +157,10 @@ def run_analysis(job_id: str, settings: AnalysisSettings) -> None:
                 include_customer=settings.include_customer_actions,
                 rep_role_confidence=rep_conf,
                 language_code=job.transcript.language_code,
+                voice_mode=settings.voice_mode,
+                voice_available=voice_available,
+                voice_note=voice_note,
+                voice_quality=vrow.quality if voice_available else None,
             )
 
             analysis.tone = outcome.tone
@@ -160,7 +175,8 @@ def run_analysis(job_id: str, settings: AnalysisSettings) -> None:
                 db.add(ToneEvidence(
                     analysis_id=analysis.id, utterance_id=ev["utterance_db_id"], quote=ev["quote"],
                     start_ms=ev["start_ms"], criterion=ev["criterion"], severity=ev["severity"],
-                    explanation=ev["explanation"], verified=True))
+                    explanation=ev["explanation"], verified=True,
+                    basis=ev["basis"], voice_cues=ev["voice_cues"]))
             for it in outcome.action_items:
                 db.add(ActionItem(
                     analysis_id=analysis.id, utterance_id=it["utterance_db_id"], description=it["description"],

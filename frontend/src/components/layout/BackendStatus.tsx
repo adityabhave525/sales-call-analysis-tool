@@ -37,5 +37,14 @@ export function BackendStatus() {
       </Notice>
     )
   }
+  if (health.data && health.data.behavioralsignals_key_set === false) {
+    return (
+      <Notice variant="info" title="Voice analysis isn't set up" className="mb-6">
+        Without <code className="rounded bg-muted px-1">BEHAVIORALSIGNALS_CID</code> and{" "}
+        <code className="rounded bg-muted px-1">BEHAVIORALSIGNALS_API_KEY</code> in <code className="rounded bg-muted px-1">backend/.env</code>,
+        tone is judged from the words only (it won't hear an angry delivery). Everything else works.
+      </Notice>
+    )
+  }
   return null
 }

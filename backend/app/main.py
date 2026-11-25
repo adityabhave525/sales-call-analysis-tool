@@ -48,6 +48,7 @@ def health():
         "status": "ok",
         "assemblyai_key_set": bool(config.assemblyai_api_key),
         "anthropic_key_set": bool(config.anthropic_api_key),
+        "behavioralsignals_key_set": bool(config.behavioralsignals_cid and config.behavioralsignals_api_key),
     }
 
 

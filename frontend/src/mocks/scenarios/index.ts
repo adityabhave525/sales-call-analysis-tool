@@ -3,12 +3,14 @@ import { failedAnalysisScenario, failedTranscriptionScenario } from "./failures"
 import { greenScenario } from "./green"
 import { needsReviewScenario } from "./needsReview"
 import { redScenario } from "./red"
+import { voiceScenario } from "./voice"
 
-export { failedAnalysisScenario, failedTranscriptionScenario, greenScenario, needsReviewScenario, redScenario }
+export { failedAnalysisScenario, failedTranscriptionScenario, greenScenario, needsReviewScenario, redScenario, voiceScenario }
 
 /**
  * In mock mode an uploaded file's NAME decides which scripted call it "contains":
  *   rude / red / angry   -> RED call
+ *   tense / voice / tone -> words look neutral, voice is angry (try each Voice setting)
  *   review / unsure / swap -> needs-review call (wrong role guess; try "Swap roles")
  *   corrupt / fail / error -> transcription fails
  *   ratelimit / retry    -> analysis fails once, then succeeds on retry
@@ -19,6 +21,7 @@ export function pickScenario(filename: string): Scenario {
   const words = filename.toLowerCase().split(/[^a-z0-9]+/)
   const has = (...keys: string[]) => keys.some((k) => words.includes(k))
   if (has("rude", "red", "angry")) return redScenario
+  if (has("tense", "voice", "tone")) return voiceScenario
   if (has("review", "unsure", "swap")) return needsReviewScenario
   if (has("corrupt", "fail", "error")) return failedTranscriptionScenario
   if (has("ratelimit", "retry")) return failedAnalysisScenario

@@ -5,6 +5,8 @@ jobs 1─* speakers            (who is rep/customer; user-editable)
 jobs 1─* analyses            (one per run; re-analysis adds a new version)
 analyses 1─* tone_evidence
 analyses 1─* action_items
+jobs 1─1 voice_analyses      (provider voice fetch status; fetched once, reused on re-analysis)
+utterances 1─1 utterance_voice   (aggregated voice signals per utterance)
 """
 import enum
 import uuid
@@ -67,6 +69,9 @@ class Job(Base):
     analyses: Mapped[list["Analysis"]] = relationship(
         back_populates="job", cascade="all, delete-orphan", order_by="Analysis.version"
     )
+    voice: Mapped["VoiceAnalysis | None"] = relationship(
+        back_populates="job", uselist=False, cascade="all, delete-orphan"
+    )
 
 
 class Transcript(Base):
@@ -105,6 +110,9 @@ class Utterance(Base):
     confidence: Mapped[float | None] = mapped_column(Float)
 
     transcript: Mapped[Transcript] = relationship(back_populates="utterances")
+    voice: Mapped["UtteranceVoice | None"] = relationship(
+        back_populates="utterance", uselist=False, cascade="all, delete-orphan"
+    )
 
 
 class Speaker(Base):
@@ -183,6 +191,8 @@ class ToneEvidence(Base):
     severity: Mapped[str] = mapped_column(String(10), default="medium")
     explanation: Mapped[str | None] = mapped_column(Text)
     verified: Mapped[bool] = mapped_column(Boolean, default=False)  # quote found in transcript?
+    basis: Mapped[str | None] = mapped_column(String(20))           # words | voice | words_and_voice
+    voice_cues: Mapped[list | None] = mapped_column(JSON)           # measured cues on that line
 
     analysis: Mapped[Analysis] = relationship(back_populates="tone_evidence")
 
@@ -204,3 +214,37 @@ class ActionItem(Base):
     verified: Mapped[bool] = mapped_column(Boolean, default=False)
 
     analysis: Mapped[Analysis] = relationship(back_populates="action_items")
+
+
+class VoiceAnalysis(Base):
+    """Result of the voice-provider call for a job. One per job: the (paid) call is made
+    once and re-analysis reuses it. status 'failed'/'unavailable' means tone falls back to words."""
+    __tablename__ = "voice_analyses"
+    __table_args__ = (
+        CheckConstraint("status IN ('ok','failed','unavailable')", name="ck_voice_status"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    job_id: Mapped[str] = mapped_column(ForeignKey("jobs.id", ondelete="CASCADE"), unique=True)
+    provider: Mapped[str] = mapped_column(String(30), default="behavioralsignals")
+    provider_process_id: Mapped[str | None] = mapped_column(String(100))
+    status: Mapped[str] = mapped_column(String(12))
+    message: Mapped[str | None] = mapped_column(Text)
+    quality: Mapped[float | None] = mapped_column(Float)     # 0-1 recording quality
+    coverage: Mapped[float | None] = mapped_column(Float)    # share of utterances with usable signals
+    speaker_map: Mapped[dict | None] = mapped_column(JSON)   # provider speaker -> our label
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+    job: Mapped[Job] = relationship(back_populates="voice")
+
+
+class UtteranceVoice(Base):
+    """Raw aggregated signals (probabilities/scores) for one utterance. Flags are derived
+    at read time from the user's current sensitivity, so no new API call is ever needed."""
+    __tablename__ = "utterance_voice"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    utterance_id: Mapped[int] = mapped_column(ForeignKey("utterances.id", ondelete="CASCADE"), unique=True)
+    signals: Mapped[dict] = mapped_column(JSON)
+
+    utterance: Mapped[Utterance] = relationship(back_populates="voice")

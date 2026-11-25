@@ -1,4 +1,14 @@
-import type { ActionType, AnalysisOut, AnalysisSettings, JobOut, Severity, SpeakerOut } from "@/types/api"
+import type {
+  ActionType,
+  AnalysisOut,
+  AnalysisSettings,
+  EvidenceBasis,
+  JobOut,
+  Severity,
+  SpeakerOut,
+  UtteranceVoiceOut,
+  VoiceStatusOut,
+} from "@/types/api"
 import type { RawUtterance } from "./script"
 
 /** What the (pretend) LLM proposes for tone. The mock then applies the backend's decision rules. */
@@ -9,6 +19,8 @@ export interface RawEvidence {
   criterion: string
   severity: Severity
   explanation: string
+  /** defaults to "words". Voice claims only survive where the scenario measured a voice flag. */
+  basis?: EvidenceBasis
 }
 
 export interface RawAnalysis {
@@ -52,6 +64,8 @@ export interface Scenario {
   /** What the pretend model says, given which label is currently the rep. */
   raw: (repLabel: string | null) => RawAnalysis
   pool: PoolItem[]
+  /** Measured voice per utterance idx. Absent => the demo behaves like a backend with no voice keys. */
+  voice?: { quality: number; lines: Record<number, UtteranceVoiceOut> }
   failure?: ScenarioFailure
 }
 

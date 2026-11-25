@@ -1,6 +1,7 @@
 import { buildUtterances, type ScriptLine } from "../script"
 import { NO_ISSUES_RAW } from "../derive"
 import type { Scenario } from "../types"
+import { calm } from "./voiceLines"
 
 const LINES: ScriptLine[] = [
   ["A", "Hi, this is Maya from Northwind Analytics. Is this a good time to talk?"],
@@ -43,6 +44,10 @@ export const greenScenario: Scenario = {
           evidence: [],
         }
       : NO_ISSUES_RAW,
+  voice: {
+    quality: 0.9,
+    lines: Object.fromEntries(LINES.map((_, i) => [i, calm(0.3 + ((i * 7) % 5) / 25, 0.3)])),
+  },
   pool: [
     {
       utterance_index: 6,

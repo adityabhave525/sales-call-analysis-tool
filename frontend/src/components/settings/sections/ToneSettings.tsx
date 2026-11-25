@@ -1,15 +1,17 @@
 import { Field, Section } from "@/components/settings/Field"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Slider } from "@/components/ui/slider"
-import { LIMITS, SENSITIVITY_OPTIONS } from "@/lib/settings"
+import { LIMITS, SENSITIVITY_OPTIONS, VOICE_MODE_OPTIONS } from "@/lib/settings"
 import { useSettingsStore } from "@/store/settingsStore"
-import type { ToneSensitivity } from "@/types/api"
+import type { ToneSensitivity, VoiceMode } from "@/types/api"
 import { CriteriaEditor } from "./CriteriaEditor"
 
 export function ToneSettings() {
   const sensitivity = useSettingsStore((s) => s.settings.tone_sensitivity)
   const threshold = useSettingsStore((s) => s.settings.red_confidence_threshold)
+  const voiceMode = useSettingsStore((s) => s.settings.voice_mode)
   const current = SENSITIVITY_OPTIONS.find((o) => o.value === sensitivity)
+  const currentVoice = VOICE_MODE_OPTIONS.find((o) => o.value === voiceMode)
 
   return (
     <Section
@@ -55,6 +57,31 @@ export function ToneSettings() {
           <span>{Math.round(LIMITS.thresholdMin * 100)}% (flags more)</span>
           <span>{Math.round(LIMITS.thresholdMax * 100)}% (flags fewer)</span>
         </div>
+      </Field>
+
+      <Field
+        label="Voice analysis"
+        hint={
+          <>
+            {currentVoice?.description} Voice is measured from the rep's actual audio, so “That's not my problem” said angrily can be told
+            apart from the same words said calmly. Turning it on sends the audio to Behavioral Signals as well as AssemblyAI.
+          </>
+        }
+      >
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          value={voiceMode}
+          onValueChange={(v: string) => v && useSettingsStore.getState().setVoiceMode(v as VoiceMode)}
+          className="w-full"
+          aria-label="Voice analysis mode"
+        >
+          {VOICE_MODE_OPTIONS.map((o) => (
+            <ToggleGroupItem key={o.value} value={o.value} className="flex-1">
+              {o.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
       </Field>
 
       <CriteriaEditor />

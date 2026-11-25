@@ -1,9 +1,10 @@
-import { Info, Quote, ShieldAlert, ShieldCheck } from "lucide-react"
+import { AudioLines, Info, Quote, ShieldAlert, ShieldCheck } from "lucide-react"
 
 import { Notice } from "@/components/common/Notice"
 import { Badge } from "@/components/ui/badge"
 import { formatClock, formatPercent } from "@/lib/format"
 import { criterionLabel, SEVERITY_LABEL, toneHeadline } from "@/lib/results"
+import { BASIS_HELP, BASIS_LABEL } from "@/lib/voice"
 import { cn } from "@/lib/utils"
 import type { AnalysisOut, Tone } from "@/types/api"
 
@@ -99,7 +100,25 @@ export function ToneCard({ analysis, onJump }: ToneCardProps) {
                       <p className="text-sm font-medium leading-relaxed">“{ev.quote}”</p>
                     </div>
                     {ev.explanation && <p className="mt-1.5 pl-6 text-sm text-muted-foreground">{ev.explanation}</p>}
+                    {ev.voice_cues && ev.voice_cues.length > 0 && (
+                      <p className="mt-1.5 flex items-center gap-1.5 pl-6 text-xs text-orange-900">
+                        <AudioLines className="size-3.5 shrink-0" aria-hidden="true" />
+                        Heard in the voice: {ev.voice_cues.join(", ")}
+                      </p>
+                    )}
                     <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-6">
+                      {ev.basis && (
+                        <Badge
+                          variant="outline"
+                          title={BASIS_HELP[ev.basis]}
+                          className={cn(
+                            "font-normal",
+                            ev.basis !== "words" && "border-orange-200 bg-orange-50 text-orange-900",
+                          )}
+                        >
+                          {BASIS_LABEL[ev.basis]}
+                        </Badge>
+                      )}
                       <Badge variant="secondary" className="font-normal">
                         {criterionLabel(analysis, ev.criterion)}
                       </Badge>

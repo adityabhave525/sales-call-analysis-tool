@@ -15,12 +15,24 @@ export function toResult(m: MockJob, version?: number): JobResultOut {
     analysis = completed.length ? completed[completed.length - 1] : null
   }
 
+  const voiceUsed = !!m.scenario.voice && (analysis?.settings_snapshot.voice_mode ?? "off") !== "off"
+  const voiceWanted = (analysis?.settings_snapshot.voice_mode ?? "off") !== "off"
+
   return {
     job: { ...m.job },
     language_code: m.hasTranscript ? m.scenario.language_code : null,
     utterances: m.hasTranscript
-      ? m.scenario.utterances.map((u) => ({ ...u, role: roleOf(u.speaker_label) }))
+      ? m.scenario.utterances.map((u) => ({
+          ...u,
+          role: roleOf(u.speaker_label),
+          voice: voiceUsed ? (m.scenario.voice!.lines[u.idx] ?? null) : null,
+        }))
       : [],
+    voice: !m.hasTranscript || !voiceWanted
+      ? null
+      : m.scenario.voice
+        ? { status: "ok", message: null, quality: m.scenario.voice.quality, coverage: 1 }
+        : { status: "unavailable", message: "Voice analysis is not configured (no Behavioral Signals keys), so tone was judged from the words only.", quality: null, coverage: null },
     speakers: m.speakers.map((s) => ({ ...s })),
     analysis,
     versions: m.analyses.map((a) => ({

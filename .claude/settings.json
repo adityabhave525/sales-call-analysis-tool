@@ -1,0 +1,13 @@
+{
+  "model": "sonnet",
+  "permissions": {
+    "deny": [
+      "Read(./backend/data/**)",
+      "Read(./backend/.venv/**)",
+      "Read(./backend/.env)",
+      "Read(./frontend/node_modules/**)",
+      "Read(./frontend/dist/**)",
+      "Read(./**/*.voice_raw.json)"
+    ]
+  }
+}

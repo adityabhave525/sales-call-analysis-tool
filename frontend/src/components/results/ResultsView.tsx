@@ -19,6 +19,7 @@ import { SummaryCard } from "./SummaryCard"
 import { ToneCard } from "./ToneCard"
 import { TranscriptPanel } from "./TranscriptPanel"
 import { VersionPicker } from "./VersionPicker"
+import { VoiceTimeline } from "./VoiceTimeline"
 
 interface ResultsViewProps {
   result: JobResultOut
@@ -104,6 +105,7 @@ export function ResultsView({ result, analysis, reanalysing = false, onSelectVer
       >
         <div className="space-y-6">
           <ToneCard analysis={analysis} onJump={interaction.jumpTo} />
+          <VoiceTimeline utterances={utterances} durationMs={job.duration_ms} onJump={(id, ms) => interaction.jumpTo(id, ms)} />
           <ActionItemsCard analysis={analysis} filename={job.original_filename} onJump={interaction.jumpTo} />
           <SummaryCard summary={analysis.call_summary} />
         </div>

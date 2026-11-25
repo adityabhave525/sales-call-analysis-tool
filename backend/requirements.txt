@@ -5,3 +5,5 @@ pydantic-settings
 python-multipart
 assemblyai
 anthropic
+behavioralsignals>=1.2.0
+av

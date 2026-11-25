@@ -1,6 +1,8 @@
 from collections.abc import Generator
 
-from sqlalchemy import create_engine, event
+import logging
+
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from .config import config
@@ -39,3 +41,24 @@ def init_db() -> None:
     from . import models  # noqa: F401  (registers tables on Base)
 
     Base.metadata.create_all(bind=engine)
+    ensure_columns()
+
+
+# Nullable columns added after the first release. create_all() creates new TABLES but never
+# alters existing ones, so add these here instead of asking people to delete app.db.
+_ADDED_COLUMNS = {
+    "tone_evidence": [("basis", "VARCHAR(20)"), ("voice_cues", "JSON")],
+}
+
+
+def ensure_columns() -> None:
+    insp = inspect(engine)
+    with engine.begin() as conn:
+        for table, cols in _ADDED_COLUMNS.items():
+            if not insp.has_table(table):
+                continue
+            have = {c["name"] for c in insp.get_columns(table)}
+            for name, ddl in cols:
+                if name not in have:
+                    logging.getLogger(__name__).info("Adding column %s.%s", table, name)
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))

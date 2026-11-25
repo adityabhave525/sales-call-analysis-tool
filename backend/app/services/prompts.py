@@ -27,8 +27,26 @@ Rules you must always follow:
 6. Respond by calling the submit_analysis tool exactly once. Do not answer in plain text."""
 
 
-def build_system_prompt(settings) -> str:
+VOICE_RULES = """VOICE SIGNALS
+Some transcript lines end with a note like {voice: angry-sounding voice, fast speech}. These were MEASURED by an audio model from the speaker's actual voice, not guessed from the words. Lines without a note have no voice information.
+- Mention a vocal quality only if a voice note on that exact line says so. Never infer how something sounded from the words alone.
+- A voice note is a signal, not a verdict. Weigh it together with the words and the context (for example, a firm line that answers an upset customer).
+- Set each evidence item's basis: 'words' (wording alone), 'voice' (the voice note alone), or 'words_and_voice' (both)."""
+
+VOICE_SUPPORTING = ("Voice may add to words-based evidence (basis 'words_and_voice') and may raise or lower your confidence. "
+                    "Do not set rep_tone_negative to true on voice alone.")
+VOICE_STRONG = ("A REP line with a strong negative voice note (angry, shouting, negative and intense) may be enough by itself "
+                "for a negative verdict even when the words look neutral, for example 'That's not my problem' said angrily. "
+                "Use basis 'voice' for such evidence and explain what the voice note says.")
+
+
+def build_system_prompt(settings, voice_available: bool = False) -> str:
     parts = [SYSTEM_BASE, "\nTONE ASSESSMENT\n" + SENSITIVITY_GUIDANCE[settings.tone_sensitivity]]
+    mode = getattr(settings, "voice_mode", "off")
+    if voice_available and mode != "off":
+        parts.append("\n" + VOICE_RULES + "\n" + (VOICE_STRONG if mode == "strong" else VOICE_SUPPORTING))
+    else:
+        parts.append("\nNo voice analysis is available for this call. Judge tone from the words only and always use basis 'words'.")
 
     enabled = [c for c in settings.tone_criteria if c.enabled]
     if enabled:
@@ -67,14 +85,23 @@ def role_name(role: str, speaker: str) -> str:
     return {"rep": "REP", "customer": "CUSTOMER"}.get(role, f"SPEAKER {speaker}")
 
 
+def _voice_suffix(u) -> str:
+    v = getattr(u, "voice", None)
+    if u.role != "rep" or not v or not v.get("cues"):
+        return ""          # voice is only reported for the rep, and only when something was measured
+    return " {voice: " + ", ".join(v["cues"]) + "}"
+
+
 def format_transcript(utts) -> str:
     """One numbered line per utterance. The model cites these numbers."""
     return "\n".join(
-        f"[{u.idx}] [{mmss(u.start_ms)}] {role_name(u.role, u.speaker)}: {u.text}" for u in utts)
+        f"[{u.idx}] [{mmss(u.start_ms)}] {role_name(u.role, u.speaker)}: {u.text}{_voice_suffix(u)}" for u in utts)
 
 
-def build_user_message(utts) -> str:
-    return ("Analyse this call. Line numbers in [brackets] are what you cite as utterance_index.\n\n"
+def build_user_message(utts, voice_available: bool = False) -> str:
+    note = ("Voice notes in {braces} were measured from the audio.\n" if voice_available
+            else "No voice analysis is available for this call.\n")
+    return ("Analyse this call. Line numbers in [brackets] are what you cite as utterance_index.\n" + note + "\n"
             f"<transcript>\n{format_transcript(utts)}\n</transcript>")
 
 

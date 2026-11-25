@@ -43,6 +43,10 @@ class AnalysisSettings(BaseModel):
     include_customer_actions: bool = True
     action_item_specificity: Literal["any", "concrete_only"] = "concrete_only"
 
+    # How much the rep's measured voice may influence the verdict.
+    # off: ignore voice | supporting: voice backs up the words | strong: voice alone can justify RED
+    voice_mode: Literal["off", "supporting", "strong"] = "supporting"
+
     custom_instructions: str = Field("", max_length=1000)
 
 
@@ -66,6 +70,30 @@ class JobOut(BaseModel):
     updated_at: datetime
 
 
+class VoiceFlagOut(BaseModel):
+    key: str
+    label: str
+    strength: str          # low | medium | high
+
+
+class UtteranceVoiceOut(BaseModel):
+    coverage: float | None = None
+    flags: list[VoiceFlagOut] = Field(default_factory=list)
+    cues: list[str] = Field(default_factory=list)
+    arousal: float | None = None
+    valence: float | None = None
+    angry: float | None = None
+    arousal_z: float | None = None
+    valence_z: float | None = None
+
+
+class VoiceStatusOut(BaseModel):
+    status: str            # ok | failed | unavailable
+    message: str | None = None
+    quality: float | None = None
+    coverage: float | None = None
+
+
 class UtteranceOut(BaseModel):
     id: int
     idx: int
@@ -75,6 +103,7 @@ class UtteranceOut(BaseModel):
     end_ms: int
     text: str
     confidence: float | None
+    voice: UtteranceVoiceOut | None = None
 
 
 class SpeakerOut(BaseModel):
@@ -97,6 +126,8 @@ class ToneEvidenceOut(BaseModel):
     criterion: str | None
     severity: str
     explanation: str | None
+    basis: str | None = None          # words | voice | words_and_voice (null on older analyses)
+    voice_cues: list[str] | None = None
 
 
 class ActionItemOut(BaseModel):
@@ -149,3 +180,4 @@ class JobResultOut(BaseModel):
     speakers: list[SpeakerOut]
     analysis: AnalysisOut | None
     versions: list[VersionOut]
+    voice: VoiceStatusOut | None = None

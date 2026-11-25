@@ -152,7 +152,7 @@ const copy = <T>(v: T): T => structuredClone(v)
 export const mockApi: CallAnalyzerApi = {
   async health() {
     await delay()
-    return { status: "ok", assemblyai_key_set: true, anthropic_key_set: true }
+    return { status: "ok", assemblyai_key_set: true, anthropic_key_set: true, behavioralsignals_key_set: true }
   },
 
   async getDefaultSettings() {

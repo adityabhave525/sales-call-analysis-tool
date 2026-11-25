@@ -63,6 +63,8 @@ Open `backend/.env` and paste your two keys:
 ```
 ASSEMBLYAI_API_KEY=your-key-here
 ANTHROPIC_API_KEY=your-key-here
+BEHAVIORALSIGNALS_CID=your-customer-id      # optional: voice tone (see below)
+BEHAVIORALSIGNALS_API_KEY=your-key-here
 ```
 
 Start the server **from the `backend` folder**:
@@ -108,6 +110,7 @@ Set `VITE_USE_MOCK=true` in `frontend/.env.local` and restart `npm run dev`. The
 | File name contains | You get |
 |---|---|
 | `rude`, `red`, `angry` | A RED call: a dismissive rep with 4 evidence quotes |
+| `tense`, `voice`, `tone` | Neutral-looking words, angry delivery ("That's not my problem"). Change **Settings > Voice analysis** between Off / Supporting / Strong and re-analyse to see how voice changes the verdict |
 | `review`, `unsure`, `swap` | A GREEN call that "needs review": wrong role guess, try **Swap roles** then re-analyse |
 | `corrupt`, `fail`, `error` | Transcription failure |
 | `ratelimit`, `retry` | Analysis fails once, then succeeds on retry |
@@ -145,6 +148,29 @@ The model **proposes**; the application's own code **decides**. Language models 
 
 Speaker diarization only gives "Speaker A / Speaker B". A small first Claude call reads the opening and closing of the call and guesses the roles with a confidence. If it's wrong, **Swap roles** in the transcript header fixes it. Your choice is remembered across re-analyses, and the results page tells you when roles have changed since the last analysis.
 
+## Voice-based tone
+
+Words alone miss a lot ("That's not my problem" reads the same angry or calm). When Behavioral Signals keys are set, the audio is also sent to [Behavioral Signals](https://behavioralsignals.com), which returns emotion/tone measurements per speaker turn. They are lined up with the transcript by time and the rep's turns get cues such as *angry-sounding voice* or *more agitated than their own norm*.
+
+- **Measured, not guessed.** Claude may only cite a vocal quality that was actually measured on that line; unmeasured voice claims are removed or downgraded to word-based evidence. Each evidence item shows its basis: words, voice, or words and voice.
+- **Voice mode (Settings):** *Off* ignores voice; *Supporting* (default) lets voice back up the words but voice alone cannot make a call RED; *Strong* lets a clearly angry delivery justify RED by itself.
+- **Per-speaker baseline:** loud or flat speakers are compared with themselves.
+- **Safe fallback:** if Behavioral Signals is not configured, fails, or the recording is poor, the job still completes with word-based tone and a visible note.
+- The voice call is made once per recording and reused for re-analysis. Sensitivity thresholds are applied when results are read, so changing sensitivity costs nothing.
+- Existing databases upgrade themselves (new columns are added on startup).
+
+**Test the voice API first** (each run uses Behavioral Signals credits):
+
+```bash
+cd backend
+pip install -r requirements.txt
+python -m scripts.voice_probe path/to/call.m4a          # real response: task names, a few raw rows, what we parsed
+python -m scripts.voice_probe path/to/call.m4a --raw    # same, but sends the m4a unconverted
+python -m scripts.voice_report path/to/call.voice_raw.json --only-flagged   # free: flags per segment at each sensitivity
+```
+
+Thresholds in `app/services/voice_features.py` are provisional. Run `voice_report` on a calm and an angry recording of the same lines and tune from that.
+
 ## Configuring the analysis
 
 Click **Settings** in the header. Changes save automatically in your browser and apply to new uploads and to re-analyses. Existing results don't change until you re-analyse.
@@ -170,6 +196,9 @@ Click **Settings** in the header. Changes save automatically in your browser and
 |---|---|---|
 | `ASSEMBLYAI_API_KEY` | none | Required |
 | `ANTHROPIC_API_KEY` | none | Required |
+| `BEHAVIORALSIGNALS_CID`, `BEHAVIORALSIGNALS_API_KEY` | none | Optional. Enables voice-based tone. Without them the app judges tone from the words and says so |
+| `VOICE_CONVERT` | `auto` | `auto`/`always`/`never`: convert audio to 16 kHz mono WAV before sending it to Behavioral Signals |
+| `VOICE_TIMEOUT_S` | `900` | How long to wait for voice results |
 | `SPEECH_MODELS` | `universal-3-pro,universal-2` | Comma-separated, in priority order. Change this if AssemblyAI rejects a model name |
 | `MAX_UPLOAD_MB` | `100` | Upload size limit |
 | `MAX_TRANSCRIPT_CHARS` | `250000` | Guard rail for very long calls (about 4 hours of speech) |
@@ -265,7 +294,7 @@ The frontend has no automated tests in this repository. Its core logic (settings
 | Analysis with Sonnet 5.5 | A couple of cents per call (roughly 10 to 20 times Haiku) |
 | Re-analysis | Analysis cost only: no re-transcription |
 
-**Privacy:** call audio is uploaded to **AssemblyAI** for transcription, and the transcript text is sent to **Anthropic** for analysis. Don't use recordings you aren't permitted to share with those services. Audio and results are stored locally in `backend/data/`.
+**Privacy:** call audio is uploaded to **AssemblyAI** for transcription (and to **Behavioral Signals** for voice analysis if you set its keys), and the transcript text is sent to **Anthropic** for analysis. Don't use recordings you aren't permitted to share with those services. Audio and results are stored locally in `backend/data/`.
 
 ## Design decisions
 
