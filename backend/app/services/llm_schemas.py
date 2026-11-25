@@ -22,6 +22,10 @@ class ToneEvidenceItem(BaseModel):
     criterion: str = Field(description="Key of the tone criterion this shows, or 'other'")
     severity: Literal["low", "medium", "high"]
     explanation: str = Field(description="Why this is negative, in one sentence")
+    excused_by_user_rule: str | None = Field(
+        default=None,
+        description=("Only if a USER RULE clearly says this behaviour is acceptable: a short phrase naming that rule. "
+                     "Such evidence is shown but does not count as negative. Otherwise null."))
     basis: Literal["words", "voice", "words_and_voice"] = Field(
         default="words",
         description=("What this evidence rests on. 'words' = the wording alone. 'voice' = only the measured voice "
@@ -44,6 +48,7 @@ class AnalysisToolOutput(BaseModel):
     rep_tone_negative: bool = Field(description="True only if the REP's tone was negative overall")
     tone_confidence: float = Field(description="0 to 1: how sure you are of this verdict, either way")
     tone_explanation: str = Field(description="2-3 sentences explaining the verdict, about the REP only")
-    tone_evidence: list[ToneEvidenceItem] = Field(description="Empty if the rep's tone was not negative")
+    tone_evidence: list[ToneEvidenceItem] = Field(
+        description="Empty if the rep showed no negative behaviour. Include behaviour a user rule excuses, flagged via excused_by_user_rule")
     action_items: list[ActionItemOut]
     call_summary: str = Field(description="2-3 sentence neutral summary of the call")

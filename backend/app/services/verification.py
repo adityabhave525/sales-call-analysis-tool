@@ -2,6 +2,7 @@
 transcript. Pure stdlib so it is easy to test. Anything that fails here is
 dropped by the caller; we never show an unverifiable quote as evidence."""
 import re
+import unicodedata
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 
@@ -12,8 +13,12 @@ MIN_WORDS_FOR_SEARCH = 3  # 1-2 word quotes are only trusted in the line the LLM
 def normalize(text: str) -> str:
     """Lowercase, drop punctuation/apostrophes, collapse whitespace.
     Makes matching robust to the punctuation/casing differences LLMs introduce."""
-    t = (text or "").lower().replace("\u2019", "").replace("\u2018", "").replace("'", "")
-    t = re.sub(r"[^\w\s]|_", " ", t)
+    t = unicodedata.normalize("NFC", text or "").lower()
+    t = t.replace("\u2019", "").replace("\u2018", "").replace("'", "")
+    # Keep letters, digits and combining marks (Devanagari/Kannada vowel signs and
+    # viramas are marks, which \w would wrongly treat as separators). Everything
+    # else, including the danda "\u0964", becomes a space.
+    t = "".join(c if (c.isalnum() or unicodedata.category(c).startswith("M")) else " " for c in t)
     return re.sub(r"\s+", " ", t).strip()
 
 

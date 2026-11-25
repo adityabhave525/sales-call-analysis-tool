@@ -193,6 +193,7 @@ class ToneEvidence(Base):
     verified: Mapped[bool] = mapped_column(Boolean, default=False)  # quote found in transcript?
     basis: Mapped[str | None] = mapped_column(String(20))           # words | voice | words_and_voice
     voice_cues: Mapped[list | None] = mapped_column(JSON)           # measured cues on that line
+    dismissed_by_rule: Mapped[str | None] = mapped_column(String(300))  # user rule that excused it (not counted)
 
     analysis: Mapped[Analysis] = relationship(back_populates="tone_evidence")
 

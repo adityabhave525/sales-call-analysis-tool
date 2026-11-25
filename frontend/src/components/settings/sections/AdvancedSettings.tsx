@@ -12,18 +12,18 @@ export function AdvancedSettings() {
 
   return (
     <>
-      <Section title="Custom instructions" description="Extra context for the analysis, in plain language.">
+      <Section title="Your rules" description="Rules you write here take priority over the built-in judgement, in plain language.">
         <Field
           label="Instructions"
           htmlFor="custom-instructions"
-          hint="Added to the analysis prompt. They can shape what the model looks for, but can't override the rule that every claim must be backed by a quote."
+          hint="If a rule says something is acceptable, it won't count toward RED even if the AI thinks it's rude. It will still be listed as dismissed. Anything your rules don't mention is judged normally. Every claim must still be backed by a real quote from the rep."
         >
           <Textarea
             id="custom-instructions"
             rows={4}
             value={instructions}
             maxLength={LIMITS.customInstructionsMax}
-            placeholder="e.g. We sell car insurance. A rep mentioning competitors is fine. Ignore small talk about the weather."
+            placeholder="e.g. Blunt, curt replies are fine with our long-time clients. Sarcastic banter is OK. A rep mentioning competitors is fine."
             onChange={(e: { target: { value: string } }) => useSettingsStore.getState().setCustomInstructions(e.target.value)}
           />
           <p className="text-right text-xs text-muted-foreground">

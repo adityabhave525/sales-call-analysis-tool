@@ -47,7 +47,8 @@ def init_db() -> None:
 # Nullable columns added after the first release. create_all() creates new TABLES but never
 # alters existing ones, so add these here instead of asking people to delete app.db.
 _ADDED_COLUMNS = {
-    "tone_evidence": [("basis", "VARCHAR(20)"), ("voice_cues", "JSON")],
+    "tone_evidence": [("basis", "VARCHAR(20)"), ("voice_cues", "JSON"),
+                      ("dismissed_by_rule", "VARCHAR(300)")],
 }
 
 

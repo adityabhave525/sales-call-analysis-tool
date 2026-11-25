@@ -62,3 +62,14 @@ def test_empty_quote():
 def test_missing_index_searches_everywhere():
     m = verify_quote("corrected invoice by Friday", UTTS, None)
     assert m.verified and m.utterance_idx == 3
+
+
+def test_hindi_quote_verified_despite_danda_and_marks():
+    utts = {0: "नमस्ते, मैं आपकी मदद कैसे कर सकता हूँ। आप चुप रहिए!"}
+    assert verify_quote("आप चुप रहिए", utts, 0).verified
+    assert verify_quote("मदद कैसे कर सकता हूँ", utts, 0).verified
+
+
+def test_hindi_wrong_quote_rejected():
+    utts = {0: "मैं कल फोन करूँगा"}
+    assert not verify_quote("मैं आज ईमेल भेजूँगा", utts, 0).verified

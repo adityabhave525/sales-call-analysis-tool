@@ -142,7 +142,7 @@ def run_analysis(job_id: str, settings: AnalysisSettings) -> None:
 
             res = call_tool(
                 model=settings.llm_model,
-                system=build_system_prompt(settings, voice_available),
+                system=build_system_prompt(settings, voice_available, settings.has_user_rules()),
                 user=build_user_message(views, voice_available),
                 tool_name="submit_analysis",
                 tool_description="Submit the tone assessment, evidence and action items for this call.",
@@ -161,6 +161,7 @@ def run_analysis(job_id: str, settings: AnalysisSettings) -> None:
                 voice_available=voice_available,
                 voice_note=voice_note,
                 voice_quality=vrow.quality if voice_available else None,
+                user_rules_present=settings.has_user_rules(),
             )
 
             analysis.tone = outcome.tone
@@ -176,7 +177,7 @@ def run_analysis(job_id: str, settings: AnalysisSettings) -> None:
                     analysis_id=analysis.id, utterance_id=ev["utterance_db_id"], quote=ev["quote"],
                     start_ms=ev["start_ms"], criterion=ev["criterion"], severity=ev["severity"],
                     explanation=ev["explanation"], verified=True,
-                    basis=ev["basis"], voice_cues=ev["voice_cues"]))
+                    basis=ev["basis"], voice_cues=ev["voice_cues"], dismissed_by_rule=ev["dismissed_by_rule"]))
             for it in outcome.action_items:
                 db.add(ActionItem(
                     analysis_id=analysis.id, utterance_id=it["utterance_db_id"], description=it["description"],

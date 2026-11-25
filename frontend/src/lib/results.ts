@@ -85,7 +85,7 @@ export function buildMarkers(analysis: AnalysisOut | null): Map<number, LineMark
     cur[kind] = true
     map.set(id, cur)
   }
-  analysis.tone_evidence.forEach((e) => mark(e.utterance_id, "evidence"))
+  analysis.tone_evidence.filter((e) => !e.dismissed_by_rule).forEach((e) => mark(e.utterance_id, "evidence"))
   analysis.action_items.forEach((a) => mark(a.utterance_id, "action"))
   return map
 }

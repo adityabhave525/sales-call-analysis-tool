@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 
 from .verification import normalize, verify_quote
 
+SUPPORTED_LANGUAGES = {"en", "hi", "mr", "kn"}   # no "tuned for English" warning for these
 LOW_CONFIDENCE = 0.6
 LOW_AUDIO_QUALITY = 0.4
 MAX_EVIDENCE = 8
@@ -104,6 +105,7 @@ def postprocess(
     voice_available: bool = False,
     voice_note: str | None = None,
     voice_quality: float | None = None,
+    user_rules_present: bool = False,
 ) -> Outcome:
     by_idx = {u.idx: u for u in utts}
     texts = {u.idx: u.text for u in utts}
@@ -111,8 +113,8 @@ def postprocess(
     rep_identified = any(u.role == "rep" for u in utts)
     needs_review = False
 
-    if language_code and not language_code.lower().startswith("en"):
-        warnings.append(f"Detected language '{language_code}'. The analysis is tuned for English and may be less reliable.")
+    if language_code and language_code.lower().split("-")[0].split("_")[0] not in SUPPORTED_LANGUAGES:
+        warnings.append(f"Detected language '{language_code}'. The analysis is tuned for English, Hindi, Marathi and Kannada and may be less reliable.")
         needs_review = True
 
     voice_on = voice_mode != "off"
@@ -140,7 +142,11 @@ def postprocess(
                 continue
             basis = "words"
             downgraded_voice += 1
+        # A user rule may excuse this behaviour, but only if the user actually has rules:
+        # the model can never dismiss evidence on its own authority.
+        excuse = str(ev.get("excused_by_user_rule") or "").strip()[:300]
         evidence.append({
+            "dismissed_by_rule": excuse if (excuse and user_rules_present) else None,
             "basis": basis,
             "voice_cues": list(utt.voice["cues"]) if measured else [],
             "utterance_idx": utt.idx, "utterance_db_id": utt.db_id,
@@ -151,7 +157,9 @@ def postprocess(
             "explanation": (str(ev.get("explanation") or "")[:500] or None),
             "method": m.method,
         })
-    evidence = evidence[:MAX_EVIDENCE]
+    # counted evidence first, so dismissed items never crowd it out of the cap
+    evidence = sorted(evidence, key=lambda e: e["dismissed_by_rule"] is not None)[:MAX_EVIDENCE]
+    n_dismissed = sum(1 for e in evidence if e["dismissed_by_rule"])
     if dropped_unverified:
         warnings.append(f"{dropped_unverified} tone quote(s) could not be found in the transcript and were removed.")
     if dropped_not_rep:
@@ -175,26 +183,31 @@ def postprocess(
     else:
         tone_conf = conf
         # Voice-only evidence counts toward RED only in 'strong' mode.
-        counting = [e for e in evidence if e["basis"] != "voice" or voice_mode == "strong"]
+        # Evidence excused by a user rule never counts toward RED.
+        active = [e for e in evidence if not e["dismissed_by_rule"]]
+        counting = [e for e in active if e["basis"] != "voice" or voice_mode == "strong"]
+        if n_dismissed:
+            warnings.append(f"{n_dismissed} behaviour(s) that would normally count as negative were dismissed "
+                            "because of your rules. They are listed separately and did not affect the verdict.")
         if model_negative and counting and conf >= red_threshold:
             tone = "RED"
         else:
             tone = "GREEN"
-            if model_negative and evidence and not counting:
+            if model_negative and active and not counting:
                 needs_review = True
                 warnings.append("Only the rep's voice suggested a negative tone, not the words. Set voice analysis to "
                                 "'Strong' if voice alone should be enough for RED. Review this call.")
-            elif model_negative and evidence:
+            elif model_negative and active:
                 needs_review = True
                 warnings.append(
                     f"Possible negative tone, but confidence ({conf:.0%}) is below your RED threshold ({red_threshold:.0%}).")
-            elif model_negative:
+            elif model_negative and not n_dismissed:
                 needs_review = True
                 warnings.append("The model suspected negative tone but no quote from the rep could be verified, so it was not flagged RED.")
         if conf < LOW_CONFIDENCE:
             needs_review = True
         if (voice_on and voice_available and voice_quality is not None and voice_quality < LOW_AUDIO_QUALITY
-                and any(e["basis"] != "words" for e in evidence)):
+                and any(e["basis"] != "words" for e in active)):
             needs_review = True
             warnings.append("The recording quality is low, so voice-based findings are less reliable.")
         if rep_role_confidence is not None and rep_role_confidence < LOW_CONFIDENCE:

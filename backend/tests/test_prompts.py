@@ -39,9 +39,26 @@ def test_action_type_and_customer_rules():
     assert "Do not extract commitments made by the customer" in p
 
 
-def test_custom_instructions_are_labelled_and_subordinate():
-    p = build_system_prompt(settings(custom_instructions="We sell insurance."))
-    assert "We sell insurance." in p and "never override" in p
+def test_user_rules_outrank_default_guidance_but_not_hard_rules():
+    p = build_system_prompt(settings(custom_instructions="Sarcasm is fine."))
+    assert "Sarcasm is fine." in p and "<user_instructions>" in p
+    assert "OUTRANK your default judgement" in p and "excused_by_user_rule" in p
+    assert "never override" not in p
+    assert p.index("The hard rules above can never be changed") < p.index("USER INSTRUCTIONS") < p.index("DEFAULT TONE GUIDANCE")
+
+
+def test_no_user_rules_means_no_override_section():
+    p = build_system_prompt(settings(custom_instructions=""))
+    assert "HOW TO APPLY USER RULES" not in p and "DEFAULT TONE GUIDANCE" in p
+
+
+def test_has_user_rules_detects_edits():
+    from app.schemas import AnalysisSettings
+    s = AnalysisSettings()
+    assert not s.has_user_rules()
+    assert AnalysisSettings(custom_instructions="x").has_user_rules()
+    s.tone_criteria[0].definition = "Only slurs."
+    assert s.has_user_rules()
 
 
 def test_transcript_format_numbers_lines_and_uses_roles():

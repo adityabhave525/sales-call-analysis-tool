@@ -119,6 +119,8 @@ export interface ToneEvidenceOut {
   basis?: EvidenceBasis | null
   /** measured vocal cues on that line, e.g. "angry-sounding voice" */
   voice_cues?: string[] | null
+  /** set when one of the user's rules excused this behaviour; it is shown but did not count toward the verdict */
+  dismissed_by_rule?: string | null
 }
 
 export interface ActionItemOut {

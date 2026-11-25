@@ -1,6 +1,6 @@
 -- for backend
-    tonality ()
-    regional language support
+    tonality ()✅
+    regional language support✅
 
     system vs user rules
     sensitivity and red threshold

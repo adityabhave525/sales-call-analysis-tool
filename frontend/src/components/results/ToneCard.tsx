@@ -1,4 +1,4 @@
-import { AudioLines, Info, Quote, ShieldAlert, ShieldCheck } from "lucide-react"
+import { AudioLines, BookCheck, Info, Quote, ShieldAlert, ShieldCheck } from "lucide-react"
 
 import { Notice } from "@/components/common/Notice"
 import { Badge } from "@/components/ui/badge"
@@ -23,6 +23,69 @@ export function ToneCard({ analysis, onJump }: ToneCardProps) {
   const { tone, tone_confidence, needs_review, tone_explanation, tone_evidence, warnings } = analysis
   const style = tone ? TONE_STYLE[tone] : null
   const Icon = tone === "RED" ? ShieldAlert : tone === "GREEN" ? ShieldCheck : Info
+  const counted = tone_evidence.filter((ev) => !ev.dismissed_by_rule)
+  const dismissed = tone_evidence.filter((ev) => ev.dismissed_by_rule)
+
+  const renderEvidence = (ev: AnalysisOut["tone_evidence"][number]) => (
+      <li key={ev.id}>
+        <button
+          type="button"
+          onClick={() => onJump(ev.utterance_id, ev.start_ms)}
+          className="w-full rounded-lg border bg-background p-3 text-left transition-colors hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-offset-2"
+          aria-label={`Jump to this quote in the transcript${ev.start_ms != null ? ` at ${formatClock(ev.start_ms)}` : ""}`}
+        >
+          <div className="flex gap-2">
+            <Quote className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <p className="text-sm font-medium leading-relaxed">“{ev.quote}”</p>
+          </div>
+          {ev.explanation && <p className="mt-1.5 pl-6 text-sm text-muted-foreground">{ev.explanation}</p>}
+          {ev.dismissed_by_rule && (
+            <p className="mt-1.5 flex items-start gap-1.5 pl-6 text-xs text-slate-700">
+              <BookCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+              <span>
+                Dismissed by your rule: <span className="font-medium">{ev.dismissed_by_rule}</span>
+              </span>
+            </p>
+          )}
+          {ev.voice_cues && ev.voice_cues.length > 0 && (
+            <p className="mt-1.5 flex items-center gap-1.5 pl-6 text-xs text-orange-900">
+              <AudioLines className="size-3.5 shrink-0" aria-hidden="true" />
+              Heard in the voice: {ev.voice_cues.join(", ")}
+            </p>
+          )}
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-6">
+            {ev.basis && (
+              <Badge
+                variant="outline"
+                title={BASIS_HELP[ev.basis]}
+                className={cn(
+                  "font-normal",
+                  ev.basis !== "words" && "border-orange-200 bg-orange-50 text-orange-900",
+                )}
+              >
+                {BASIS_LABEL[ev.basis]}
+              </Badge>
+            )}
+            <Badge variant="secondary" className="font-normal">
+              {criterionLabel(analysis, ev.criterion)}
+            </Badge>
+            <Badge
+              variant="outline"
+              className={cn("font-normal", ev.dismissed_by_rule && ev.severity === "high" && "border-amber-300 bg-amber-100 text-amber-950")}
+              title={ev.dismissed_by_rule && ev.severity === "high" ? "Serious behaviour that your rule excused. Worth a second look." : undefined}
+            >
+              {SEVERITY_LABEL[ev.severity]}
+              {ev.dismissed_by_rule && ev.severity === "high" ? " · dismissed anyway" : ""}
+            </Badge>
+            {ev.start_ms != null && (
+              <span className="ml-auto text-xs tabular-nums text-muted-foreground">
+                {formatClock(ev.start_ms)} · jump to line
+              </span>
+            )}
+          </div>
+        </button>
+      </li>
+  )
 
   return (
     <section aria-labelledby="tone-heading" className="overflow-hidden rounded-xl border bg-card">
@@ -74,69 +137,33 @@ export function ToneCard({ analysis, onJump }: ToneCardProps) {
 
         <div className="space-y-2">
           <h3 className="text-sm font-semibold">
-            {tone_evidence.length === 0
+            {counted.length === 0
               ? "Evidence"
               : tone === "RED"
-                ? `Supporting evidence (${tone_evidence.length})`
-                : `Possible concerns, not enough to flag RED (${tone_evidence.length})`}
+                ? `Supporting evidence (${counted.length})`
+                : `Possible concerns, not enough to flag RED (${counted.length})`}
           </h3>
 
-          {tone_evidence.length === 0 ? (
+          {counted.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {tone === "GREEN" ? "No quotes from the rep showed negative tone." : "No supporting quotes were verified."}
             </p>
           ) : (
             <ul className="space-y-2">
-              {tone_evidence.map((ev) => (
-                <li key={ev.id}>
-                  <button
-                    type="button"
-                    onClick={() => onJump(ev.utterance_id, ev.start_ms)}
-                    className="w-full rounded-lg border bg-background p-3 text-left transition-colors hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-offset-2"
-                    aria-label={`Jump to this quote in the transcript${ev.start_ms != null ? ` at ${formatClock(ev.start_ms)}` : ""}`}
-                  >
-                    <div className="flex gap-2">
-                      <Quote className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                      <p className="text-sm font-medium leading-relaxed">“{ev.quote}”</p>
-                    </div>
-                    {ev.explanation && <p className="mt-1.5 pl-6 text-sm text-muted-foreground">{ev.explanation}</p>}
-                    {ev.voice_cues && ev.voice_cues.length > 0 && (
-                      <p className="mt-1.5 flex items-center gap-1.5 pl-6 text-xs text-orange-900">
-                        <AudioLines className="size-3.5 shrink-0" aria-hidden="true" />
-                        Heard in the voice: {ev.voice_cues.join(", ")}
-                      </p>
-                    )}
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-6">
-                      {ev.basis && (
-                        <Badge
-                          variant="outline"
-                          title={BASIS_HELP[ev.basis]}
-                          className={cn(
-                            "font-normal",
-                            ev.basis !== "words" && "border-orange-200 bg-orange-50 text-orange-900",
-                          )}
-                        >
-                          {BASIS_LABEL[ev.basis]}
-                        </Badge>
-                      )}
-                      <Badge variant="secondary" className="font-normal">
-                        {criterionLabel(analysis, ev.criterion)}
-                      </Badge>
-                      <Badge variant="outline" className="font-normal">
-                        {SEVERITY_LABEL[ev.severity]}
-                      </Badge>
-                      {ev.start_ms != null && (
-                        <span className="ml-auto text-xs tabular-nums text-muted-foreground">
-                          {formatClock(ev.start_ms)} · jump to line
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                </li>
-              ))}
+              {counted.map((ev) => renderEvidence(ev))}
             </ul>
           )}
         </div>
+
+        {dismissed.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold">Dismissed by your rules ({dismissed.length})</h3>
+            <p className="text-xs text-muted-foreground">
+              These would normally count as negative, but one of your rules says they are fine. They did not affect the verdict.
+            </p>
+            <ul className="space-y-2">{dismissed.map((ev) => renderEvidence(ev))}</ul>
+          </div>
+        )}
       </div>
     </section>
   )

@@ -69,6 +69,12 @@ def test_non_english_flags_review():
     assert o.needs_review and any("language" in w.lower() for w in o.warnings)
 
 
+def test_indic_language_not_flagged():
+    for code in ("hi", "mr", "kn", "en_us"):
+        o = postprocess(raw(), U, language_code=code, **KW)
+        assert not any("language" in w.lower() for w in o.warnings)
+
+
 def item(**over):
     base = {"description": "Send corrected invoice", "item_type": "send_information",
             "owner_role": "rep", "deadline_text": "by Friday", "utterance_index": 4,
@@ -134,3 +140,48 @@ def test_roles_same_role_for_both_becomes_unknown():
 
 def test_roles_empty_output():
     assert normalize_roles([], ["A"])["A"][0] == "unknown"
+
+
+# ---------- user rules outrank the default judgement ----------
+
+def _excused(rule="Blunt answers are fine with our regulars", **over):
+    ev = {"utterance_index": 2, "quote": "that's not my department", "criterion": "dismissiveness",
+          "severity": "high", "explanation": "Brushes off.", "excused_by_user_rule": rule}
+    ev.update(over)
+    return raw(tone_evidence=[ev])
+
+
+def test_excused_evidence_does_not_make_red_but_stays_visible():
+    o = postprocess(_excused(), U, user_rules_present=True, **KW)
+    assert o.tone == "GREEN" and not o.needs_review
+    assert len(o.evidence) == 1 and o.evidence[0]["dismissed_by_rule"] == "Blunt answers are fine with our regulars"
+    assert any("dismissed" in w for w in o.warnings)
+    assert not any("could not be verified" in w for w in o.warnings)
+
+
+def test_model_cannot_excuse_without_user_rules():
+    o = postprocess(_excused(), U, user_rules_present=False, **KW)
+    assert o.tone == "RED" and o.evidence[0]["dismissed_by_rule"] is None
+
+
+def test_no_contradicting_rule_behaves_as_before():
+    o = postprocess(raw(), U, user_rules_present=True, **KW)
+    assert o.tone == "RED" and o.evidence[0]["dismissed_by_rule"] is None
+
+
+def test_unexcused_evidence_still_counts_next_to_excused():
+    r = raw(tone_evidence=[
+        {"utterance_index": 2, "quote": "that's not my department", "severity": "low", "excused_by_user_rule": "Blunt is fine"},
+        {"utterance_index": 2, "quote": "You'll have to wait", "severity": "medium"},
+    ])
+    o = postprocess(r, U, user_rules_present=True, **KW)
+    assert o.tone == "RED"
+    assert [e["dismissed_by_rule"] for e in o.evidence] == [None, "Blunt is fine"]
+
+
+def test_excusing_cannot_legitimise_customer_or_fake_quotes():
+    r = raw(rep_tone_negative=False, tone_evidence=[
+        {"utterance_index": 3, "quote": "you are useless", "excused_by_user_rule": "x"},
+        {"utterance_index": 2, "quote": "never said this", "excused_by_user_rule": "x"}])
+    o = postprocess(r, U, user_rules_present=True, **KW)
+    assert o.evidence == []

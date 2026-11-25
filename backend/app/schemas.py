@@ -49,6 +49,14 @@ class AnalysisSettings(BaseModel):
 
     custom_instructions: str = Field("", max_length=1000)
 
+    def has_user_rules(self) -> bool:
+        """True if the user wrote instructions or changed/added a tone criterion.
+        Only then may the model excuse behaviour on the user's behalf."""
+        if self.custom_instructions.strip():
+            return True
+        defaults = {c.key: c.definition.strip() for c in default_criteria()}
+        return any(defaults.get(c.key) != c.definition.strip() for c in self.tone_criteria)
+
 
 class RepAssignment(BaseModel):
     rep_label: str
@@ -128,6 +136,7 @@ class ToneEvidenceOut(BaseModel):
     explanation: str | None
     basis: str | None = None          # words | voice | words_and_voice (null on older analyses)
     voice_cues: list[str] | None = None
+    dismissed_by_rule: str | None = None   # set when one of the user's rules excused this behaviour
 
 
 class ActionItemOut(BaseModel):
