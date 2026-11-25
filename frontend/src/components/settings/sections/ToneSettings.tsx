@@ -1,14 +1,12 @@
 import { Field, Section } from "@/components/settings/Field"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { Slider } from "@/components/ui/slider"
-import { LIMITS, SENSITIVITY_OPTIONS, VOICE_MODE_OPTIONS } from "@/lib/settings"
+import { SENSITIVITY_OPTIONS, VOICE_MODE_OPTIONS } from "@/lib/settings"
 import { useSettingsStore } from "@/store/settingsStore"
 import type { ToneSensitivity, VoiceMode } from "@/types/api"
 import { CriteriaEditor } from "./CriteriaEditor"
 
 export function ToneSettings() {
   const sensitivity = useSettingsStore((s) => s.settings.tone_sensitivity)
-  const threshold = useSettingsStore((s) => s.settings.red_confidence_threshold)
   const voiceMode = useSettingsStore((s) => s.settings.voice_mode)
   const current = SENSITIVITY_OPTIONS.find((o) => o.value === sensitivity)
   const currentVoice = VOICE_MODE_OPTIONS.find((o) => o.value === voiceMode)
@@ -34,29 +32,6 @@ export function ToneSettings() {
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
-      </Field>
-
-      <Field
-        label={`RED threshold: ${Math.round(threshold * 100)}%`}
-        hint={
-          <>
-            A call is only marked RED when the model is at least this confident <em>and</em> a quote from the rep backs it up.
-            Below it, the call stays GREEN but is flagged “Needs review”. Lower flags more calls; higher flags fewer, surer ones.
-          </>
-        }
-      >
-        <Slider
-          min={LIMITS.thresholdMin}
-          max={LIMITS.thresholdMax}
-          step={LIMITS.thresholdStep}
-          value={[threshold]}
-          onValueChange={(v: number[]) => useSettingsStore.getState().setRedThreshold(v[0])}
-          aria-label="RED confidence threshold"
-        />
-        <div className="flex justify-between text-xs text-muted-foreground" aria-hidden="true">
-          <span>{Math.round(LIMITS.thresholdMin * 100)}% (flags more)</span>
-          <span>{Math.round(LIMITS.thresholdMax * 100)}% (flags fewer)</span>
-        </div>
       </Field>
 
       <Field

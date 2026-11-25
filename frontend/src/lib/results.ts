@@ -10,8 +10,6 @@ import type {
   UtteranceOut,
 } from "@/types/api"
 
-export const LOW_CONFIDENCE = 0.6
-
 export const ACTION_TYPE_LABEL: Record<ActionType, string> = {
   commitment: "Commitment",
   follow_up: "Follow-up",
@@ -27,10 +25,6 @@ export const SEVERITY_LABEL: Record<Severity, string> = {
 
 export function toneHeadline(tone: Tone): string {
   return tone === "RED" ? "Negative tone detected" : "No negative tone detected"
-}
-
-export function isLowConfidence(confidence: number | null | undefined): boolean {
-  return confidence != null && confidence < LOW_CONFIDENCE
 }
 
 export function speakerName(role: Role, label: string): string {

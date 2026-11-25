@@ -16,6 +16,8 @@ import { quoteInText, type RawUtterance } from "./script"
 import type { RawAnalysis, Scenario } from "./types"
 
 const LOW_CONFIDENCE = 0.6
+/** Mirrors RED_CONFIDENCE_THRESHOLD in backend/app/schemas.py (not a user setting). */
+const RED_CONFIDENCE_THRESHOLD = 0.6
 /** Stand-in for how strict prompting shifts the model's confidence. */
 const SENSITIVITY_DELTA = { lenient: -0.2, balanced: 0, strict: 0.1 } as const
 
@@ -30,7 +32,6 @@ let idCounter = 1000
 const nextId = () => ++idCounter
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x))
-const pct = (x: number) => `${Math.round(x * 100)}%`
 
 export interface DeriveInput {
   scenario: Scenario
@@ -140,7 +141,7 @@ export function deriveAnalysis(input: DeriveInput): AnalysisOut {
 
     // voice-only evidence counts toward RED only in "strong" mode
     const counting = evidence.filter((ev) => ev.basis !== "voice" || settings.voice_mode === "strong")
-    if (modelNegative && counting.length > 0 && conf >= settings.red_confidence_threshold) {
+    if (modelNegative && counting.length > 0 && conf >= RED_CONFIDENCE_THRESHOLD) {
       tone = "RED"
     } else {
       tone = "GREEN"
@@ -152,7 +153,7 @@ export function deriveAnalysis(input: DeriveInput): AnalysisOut {
       } else if (modelNegative && evidence.length > 0) {
         needsReview = true
         warnings.push(
-          `Possible negative tone, but confidence (${pct(conf)}) is below your RED threshold (${pct(settings.red_confidence_threshold)}).`,
+          "Possible negative tone, but the evidence was not strong enough to mark this call RED. Review this call.",
         )
       } else if (modelNegative) {
         needsReview = true
@@ -164,7 +165,7 @@ export function deriveAnalysis(input: DeriveInput): AnalysisOut {
     if (conf < LOW_CONFIDENCE) needsReview = true
     if (repConfidence !== null && repConfidence < LOW_CONFIDENCE) {
       needsReview = true
-      warnings.push("Rep/customer roles were inferred with low confidence. Check them and swap if needed.")
+      warnings.push("Rep/customer roles could not be identified clearly. Check them and swap if needed.")
     }
   }
 

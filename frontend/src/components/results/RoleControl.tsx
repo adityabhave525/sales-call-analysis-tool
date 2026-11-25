@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAssignRep, useReanalyse } from "@/hooks/useJobs"
 import { describeError } from "@/lib/errors"
-import { formatPercent } from "@/lib/format"
 import { getRequestSettings } from "@/store/settingsStore"
 import type { SpeakerOut } from "@/types/api"
 
@@ -61,7 +60,7 @@ export function RoleControl({ jobId, speakers, disabled = false }: RoleControlPr
     ? "Not identified yet. Choose who the rep is."
     : rep.role_source === "user"
       ? "Set by you"
-      : `Auto-detected (${formatPercent(rep.role_confidence)} sure)`
+      : "Auto-detected"
 
   return (
     <div className="space-y-1">

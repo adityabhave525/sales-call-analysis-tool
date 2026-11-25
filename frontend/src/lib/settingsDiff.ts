@@ -11,7 +11,6 @@ import type { Role, SpeakerOut } from "@/types/api"
 
 const labelOf = (opts: readonly { value: string; label: string }[], v: string) =>
   opts.find((o) => o.value === v)?.label ?? v
-const pct = (x: number) => `${Math.round(x * 100)}%`
 const onOff = (b: boolean) => (b ? "on" : "off")
 
 /**
@@ -32,9 +31,6 @@ export function describeSettingsChanges(current: unknown, used: unknown): string
   }
   if (a.voice_mode !== b.voice_mode) {
     out.push(`Voice analysis: ${labelOf(VOICE_MODE_OPTIONS, b.voice_mode)} → ${labelOf(VOICE_MODE_OPTIONS, a.voice_mode)}`)
-  }
-  if (a.red_confidence_threshold !== b.red_confidence_threshold) {
-    out.push(`RED threshold: ${pct(b.red_confidence_threshold)} → ${pct(a.red_confidence_threshold)}`)
   }
 
   const before = new Map(b.tone_criteria.map((c) => [c.key, c]))

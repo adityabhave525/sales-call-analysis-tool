@@ -11,7 +11,6 @@ import {
   withCustomInstructions,
   withNewCriterion,
   withoutCriterion,
-  withRedThreshold,
   withToggledActionType,
   type CriterionPatch,
 } from "@/lib/settings"
@@ -29,7 +28,6 @@ interface SettingsState {
 
   setLlmModel: (model: LlmModel) => void
   setToneSensitivity: (value: ToneSensitivity) => void
-  setRedThreshold: (value: number) => void
   setVoiceMode: (value: VoiceMode) => void
   updateCriterion: (key: string, patch: CriterionPatch) => void
   /** Returns an error message to show in the UI, or null on success. */
@@ -55,7 +53,6 @@ export const useSettingsStore = create<SettingsState>()(
 
         setLlmModel: (llm_model) => update((s) => ({ ...s, llm_model })),
         setToneSensitivity: (tone_sensitivity) => update((s) => ({ ...s, tone_sensitivity })),
-        setRedThreshold: (value) => update((s) => withRedThreshold(s, value)),
         setVoiceMode: (voice_mode) => update((s) => ({ ...s, voice_mode })),
         updateCriterion: (key, patch) => update((s) => withCriterionPatch(s, key, patch)),
         addCriterion: (label, definition) => {

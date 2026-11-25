@@ -8,7 +8,6 @@ import {
   ACTION_TYPE_LABEL,
   actionItemsToText,
   deadlineLabel,
-  isLowConfidence,
   ownerLabel,
 } from "@/lib/results"
 import { cn } from "@/lib/utils"
@@ -74,11 +73,6 @@ export function ActionItemsCard({ analysis, filename, onJump }: ActionItemsCardP
                     <Calendar className="size-3" aria-hidden="true" />
                     {deadlineLabel(item.deadline_text)}
                   </Badge>
-                  {isLowConfidence(item.confidence) && (
-                    <Badge variant="outline" className="border-amber-200 bg-amber-50 font-normal text-amber-900">
-                      Low confidence
-                    </Badge>
-                  )}
                 </div>
 
                 <button

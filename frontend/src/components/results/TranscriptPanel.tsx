@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { describeVoice } from "@/lib/voice"
 import type { useTranscriptInteraction } from "@/hooks/useTranscriptInteraction"
 import { formatClock } from "@/lib/format"
-import { isLowConfidence, speakerName, type LineMarkers } from "@/lib/results"
+import { speakerName, type LineMarkers } from "@/lib/results"
 import { RoleControl } from "./RoleControl"
 import { cn } from "@/lib/utils"
 import type { Role, SpeakerOut, UtteranceOut } from "@/types/api"
@@ -74,9 +74,7 @@ const TranscriptLine = memo(function TranscriptLine({ u, markers, isActive, isPl
           style.bubble,
           isPlaying && "ring-2 ring-sky-400",
           isActive && "ring-2 ring-foreground",
-          isLowConfidence(u.confidence) && "italic",
         )}
-        title={isLowConfidence(u.confidence) ? "The transcription service was unsure about this line" : undefined}
       >
         {u.text}
       </div>
@@ -109,7 +107,6 @@ export function TranscriptPanel({
   const { audioRef, activeId, playingId, registerLine, jumpTo, onPlaybackPosition } = interaction
   const [audioFailed, setAudioFailed] = useState(false)
   const onPlay = useCallback((u: UtteranceOut) => jumpTo(u.id, u.start_ms, true), [jumpTo])
-  const uncertainRoles = speakers.some((s) => s.role === "rep" && s.role_source === "auto" && (s.role_confidence ?? 1) < 0.6)
 
   return (
     <section
@@ -119,11 +116,6 @@ export function TranscriptPanel({
       <div className="space-y-3 border-b p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-base font-semibold">{title}</h2>
-          {uncertainRoles && (
-            <Badge variant="outline" className="border-amber-200 bg-amber-50 font-normal text-amber-900">
-              Roles uncertain
-            </Badge>
-          )}
         </div>
         <RoleControl jobId={jobId} speakers={speakers} disabled={rolesDisabled} />
         <audio

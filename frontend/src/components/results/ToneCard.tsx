@@ -2,7 +2,7 @@ import { AudioLines, BookCheck, Info, Quote, ShieldAlert, ShieldCheck } from "lu
 
 import { Notice } from "@/components/common/Notice"
 import { Badge } from "@/components/ui/badge"
-import { formatClock, formatPercent } from "@/lib/format"
+import { formatClock } from "@/lib/format"
 import { criterionLabel, SEVERITY_LABEL, toneHeadline } from "@/lib/results"
 import { BASIS_HELP, BASIS_LABEL } from "@/lib/voice"
 import { cn } from "@/lib/utils"
@@ -20,7 +20,7 @@ interface ToneCardProps {
 }
 
 export function ToneCard({ analysis, onJump }: ToneCardProps) {
-  const { tone, tone_confidence, needs_review, tone_explanation, tone_evidence, warnings } = analysis
+  const { tone, needs_review, tone_explanation, tone_evidence, warnings } = analysis
   const style = tone ? TONE_STYLE[tone] : null
   const Icon = tone === "RED" ? ShieldAlert : tone === "GREEN" ? ShieldCheck : Info
   const counted = tone_evidence.filter((ev) => !ev.dismissed_by_rule)
@@ -98,9 +98,7 @@ export function ToneCard({ analysis, onJump }: ToneCardProps) {
               {tone ? toneHeadline(tone) : "Tone unavailable"}
             </h2>
           </div>
-          <p className="text-sm opacity-80">
-            Sales rep's tone · {tone_confidence != null ? `${formatPercent(tone_confidence)} confidence` : "confidence unavailable"}
-          </p>
+          <p className="text-sm opacity-80">Sales rep's tone</p>
         </div>
         {needs_review && (
           <Badge variant="outline" className="shrink-0 border-amber-300 bg-amber-100 text-amber-950">
@@ -121,7 +119,7 @@ export function ToneCard({ analysis, onJump }: ToneCardProps) {
                 ))}
               </ul>
             ) : (
-              "Confidence is low, so treat this as a hint rather than a verdict."
+              "Treat this as a hint rather than a verdict."
             )}
           </Notice>
         )}

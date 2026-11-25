@@ -27,14 +27,16 @@ def default_criteria() -> list[ToneCriterion]:
     ]
 
 
+# Minimum model confidence needed to label RED. Below this -> GREEN + "needs review".
+# Deliberately NOT a user setting (clients cannot change it); sensitivity is the only tone dial.
+RED_CONFIDENCE_THRESHOLD = 0.6
+
 ActionType = Literal["commitment", "follow_up", "send_information", "schedule_meeting"]
 
 
 class AnalysisSettings(BaseModel):
     llm_model: Literal["claude-haiku-5-5", "claude-sonnet-5-5"] = "claude-haiku-5-5"
     tone_sensitivity: Literal["lenient", "balanced", "strict"] = "balanced"
-    # Minimum model confidence needed to label RED. Below this -> GREEN + "needs review".
-    red_confidence_threshold: float = Field(0.6, ge=0.3, le=0.95)
     tone_criteria: list[ToneCriterion] = Field(default_factory=default_criteria)
 
     action_item_types: list[ActionType] = Field(

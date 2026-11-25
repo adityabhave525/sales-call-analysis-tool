@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from ..config import config
 from ..database import SessionLocal
 from ..models import ActionItem, Analysis, Job, JobStatus, Speaker, ToneEvidence
-from ..schemas import AnalysisSettings
+from ..schemas import RED_CONFIDENCE_THRESHOLD, AnalysisSettings
 from .llm import LLMError, call_tool
 from .llm_schemas import AnalysisToolOutput, RolesToolOutput
 from .postprocess import UttView, normalize_roles, postprocess
@@ -152,7 +152,7 @@ def run_analysis(job_id: str, settings: AnalysisSettings) -> None:
 
             outcome = postprocess(
                 raw, views,
-                red_threshold=settings.red_confidence_threshold,
+                red_threshold=RED_CONFIDENCE_THRESHOLD,
                 allowed_types=list(settings.action_item_types),
                 include_customer=settings.include_customer_actions,
                 rep_role_confidence=rep_conf,

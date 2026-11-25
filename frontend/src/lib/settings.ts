@@ -18,9 +18,6 @@ import type {
 
 // ---------- Limits (enforced here and by the backend) ----------
 export const LIMITS = {
-  thresholdMin: 0.3,
-  thresholdMax: 0.95,
-  thresholdStep: 0.05,
   customInstructionsMax: 1000,
   criterionLabelMax: 40,
   criterionDefinitionMax: 300,
@@ -72,7 +69,6 @@ export function createDefaultSettings(): AnalysisSettings {
   return {
     llm_model: "claude-haiku-5-5",
     tone_sensitivity: "balanced",
-    red_confidence_threshold: 0.6,
     tone_criteria: BUILT_IN_CRITERIA.map((c) => ({ ...c })),
     action_item_types: [...ALL_ACTION_TYPES],
     include_customer_actions: true,
@@ -145,13 +141,6 @@ function pick<T extends string>(v: unknown, allowed: readonly T[], fallback: T):
   return typeof v === "string" && (allowed as readonly string[]).includes(v) ? (v as T) : fallback
 }
 
-export function clampThreshold(v: number): number {
-  if (!Number.isFinite(v)) return 0.6
-  const snapped = Math.round(v / LIMITS.thresholdStep) * LIMITS.thresholdStep
-  const clamped = Math.min(LIMITS.thresholdMax, Math.max(LIMITS.thresholdMin, snapped))
-  return Number(clamped.toFixed(2))
-}
-
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -216,10 +205,6 @@ export function sanitizeSettings(input: unknown): AnalysisSettings {
   return {
     llm_model: pick(input.llm_model, MODEL_OPTIONS.map((m) => m.value), d.llm_model),
     tone_sensitivity: pick(input.tone_sensitivity, SENSITIVITY_OPTIONS.map((o) => o.value), d.tone_sensitivity),
-    red_confidence_threshold:
-      typeof input.red_confidence_threshold === "number"
-        ? clampThreshold(input.red_confidence_threshold)
-        : d.red_confidence_threshold,
     tone_criteria: sanitizeCriteria(input.tone_criteria),
     action_item_types: types.length > 0 ? types : [...d.action_item_types],
     include_customer_actions:
@@ -276,10 +261,6 @@ export function toRequestSettings(s: AnalysisSettings): AnalysisSettings {
 }
 
 // ---------- Pure updates (used by the store) ----------
-export function withRedThreshold(s: AnalysisSettings, value: number): AnalysisSettings {
-  return { ...s, red_confidence_threshold: clampThreshold(value) }
-}
-
 export function withCustomInstructions(s: AnalysisSettings, text: string): AnalysisSettings {
   return { ...s, custom_instructions: text.slice(0, LIMITS.customInstructionsMax) }
 }

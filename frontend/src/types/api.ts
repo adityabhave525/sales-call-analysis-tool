@@ -36,7 +36,6 @@ export interface AnalysisSettings {
   llm_model: LlmModel
   tone_sensitivity: ToneSensitivity
   /** 0.3 - 0.95. Minimum model confidence required to mark a call RED. */
-  red_confidence_threshold: number
   tone_criteria: ToneCriterion[]
   action_item_types: ActionType[]
   include_customer_actions: boolean

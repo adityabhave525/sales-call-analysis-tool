@@ -200,7 +200,7 @@ def postprocess(
             elif model_negative and active:
                 needs_review = True
                 warnings.append(
-                    f"Possible negative tone, but confidence ({conf:.0%}) is below your RED threshold ({red_threshold:.0%}).")
+                    "Possible negative tone, but the evidence was not strong enough to mark this call RED. Review this call.")
             elif model_negative and not n_dismissed:
                 needs_review = True
                 warnings.append("The model suspected negative tone but no quote from the rep could be verified, so it was not flagged RED.")
@@ -212,7 +212,7 @@ def postprocess(
             warnings.append("The recording quality is low, so voice-based findings are less reliable.")
         if rep_role_confidence is not None and rep_role_confidence < LOW_CONFIDENCE:
             needs_review = True
-            warnings.append("Rep/customer roles were inferred with low confidence. Check them and swap if needed.")
+            warnings.append("Rep/customer roles could not be identified clearly. Check them and swap if needed.")
 
     # ---------- action items ----------
     items: list[dict] = []

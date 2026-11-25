@@ -7,7 +7,6 @@ import type {
   Severity,
   SpeakerOut,
   UtteranceVoiceOut,
-  VoiceStatusOut,
 } from "@/types/api"
 import type { RawUtterance } from "./script"
 
